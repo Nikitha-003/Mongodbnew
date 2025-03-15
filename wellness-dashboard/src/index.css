@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: #2c5282;
+  background-color: #ffffff;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom CSS Variables for healthcare theme */
+:root {
+  --color-primary: #2c5282;
+  --color-secondary: #4299e1;
+  --color-accent: #bfdbfe;
+  --color-background: #ffffff;
+  --color-surface: #e6f0f8;
+  --color-text: #2c5282;
+  --color-text-secondary: #4a5568;
+  --color-border: #e2e8f0;
+}
+
+/* Override Tailwind classes */
+.bg-gray-900 {
+  background-color: var(--color-surface) !important;
+}
+
+.bg-gray-800 {
+  background-color: var(--color-background) !important;
+}
+
+.bg-gray-700 {
+  background-color: var(--color-surface) !important;
+}
+
+.text-white {
+  color: var(--color-text) !important;
+}
+
+.text-gray-400 {
+  color: var(--color-text-secondary) !important;
+}
+
+.border-gray-700, .border-gray-600 {
+  border-color: var(--color-border) !important;
+}
+
+.bg-blue-500, .bg-red-500, .bg-green-500 {
+  background-color: #bfdbfe !important;
+  color: #2c5282 !important;
+}
+
+.hover\:bg-gray-700:hover {
+  background-color: var(--color-accent) !important;
+}
+
+.bg-black.bg-opacity-50 {
+  background-color: rgba(44, 82, 130, 0.1) !important;
+}
+
+/* Navigation and Link styles */
+a {
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: var(--color-secondary);
+}
+
+/* Form elements */
+input, select, textarea {
+  background-color: #f8fafc !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-secondary) !important;
+  ring-color: var(--color-accent) !important;
+}
+
+/* Table styles */
+table {
+  background-color: var(--color-background) !important;
+}
+
+tr {
+  background-color: var(--color-background) !important;
+}
+
+/* Table header styles */
+thead, thead tr {
+  background-color: #bfdbfe !important;
+}
+
+thead th {
+  color: #2c5282 !important;
+  font-weight: 500 !important;
+}
+
+/* Button styles */
+button.bg-green-500,
+button[type="submit"],
+button[type="button"] {
+  background-color: #bfdbfe !important;
+  color: #2c5282 !important;
+  transition: background-color 0.2s ease-in-out !important;
+}
+
+button.bg-green-500:hover,
+button[type="submit"]:hover,
+button[type="button"]:hover {
+  background-color: #a9cffe !important;
+}
+
+/* Add More button styles */
+button[class*="add-more"],
+.add-more-btn {
+  background: none !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+button[class*="add-more"]:hover,
+.add-more-btn:hover {
+  background: none !important;
+}
+
+/* Hamburger menu button */
+.bg-[#f0f7ff] {
+  background-color: #e6f3ff !important;
+}
+
+.hover\:bg-[#e1effe]:hover {
+  background-color: #d1e9ff !important;
+}
