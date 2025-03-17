@@ -1,58 +1,64 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
+
+const prescriptionSchema = new mongoose.Schema({
+  medicine: String,
+  dosage: String,
+  frequency: String,
+  duration: String,
+  instructions: String
+});
 
 const patientSchema = new mongoose.Schema({
-  patient_id: String,
-  name: String,
-  age: Number,
-  gender: String,
+  patient_id: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  age: {
+    type: Number,
+    required: true
+  },
+  gender: {
+    type: String,
+    required: true
+  },
+  // Add new fields
+  phone: {
+    type: String
+  },
+  email: {
+    type: String
+  },
+  address: {
+    type: String
+  },
+  blood_group: {
+    type: String
+  },
+  // Existing fields
   medical_history: [
     {
       condition: String,
-      diagnosed_on: String,
-    },
+      diagnosis_date: String
+    }
   ],
   appointments: [
     {
       date: String,
+      time: String,
       doctor: String,
       department: String,
-    },
+      status: String
+    }
   ],
-  diagnostics: [
-    {
-      test_name: String,
-      result: String,
-      date: String,
-    },
-  ],
-  mental_health: [
-    {
-      session_notes: String,
-      evaluation: String,
-      therapist: String,
-    },
-  ],
-  physiotherapy: [
-    {
-      progress_log: String,
-      session_date: String,
-    },
-  ],
-  nutrition: [
-    {
-      dietary_plan: String,
-      calorie_intake: Number,
-      progress: String,
-    },
-  ],
-  yoga: [
-    {
-      session_plan: String,
-      wearable_data: String,
-    },
-  ],
+  prescriptions: [prescriptionSchema],
+  prescription_pdf: String
 });
 
-const Patient = mongoose.model("Patient", patientSchema);
+const Patient = mongoose.model('Patient', patientSchema);
 
 module.exports = Patient;

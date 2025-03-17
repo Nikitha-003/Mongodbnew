@@ -5,8 +5,12 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 
 const app = express();
-app.use(express.json());
-app.use(cors());
+app.use(express.json({ limit: '50mb' })); // Increased limit for larger PDF files
+app.use(cors({
+  origin: 'http://localhost:5173', // Your frontend URL
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "wellness-portal-secret-key";
@@ -117,6 +121,19 @@ app.get("/patients", async (req, res) => {
   }
 });
 
+// IMPORTANT: Order matters for routes with parameters
+// This route must come before any routes with :id parameter
+app.get("/patients/next-id", async (req, res) => {
+  try {
+    const patients = await Patient.find().sort({ patient_id: -1 }).limit(1);
+    const lastId = patients.length > 0 ? parseInt(patients[0].patient_id.substring(1)) : 0;
+    const nextId = `P${String(lastId + 1).padStart(3, '0')}`;
+    res.json({ nextId });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Add new patient
 app.post("/patients", async (req, res) => {
   try {
@@ -124,6 +141,52 @@ app.post("/patients", async (req, res) => {
     const savedPatient = await newPatient.save();
     res.json(savedPatient); // Send back the saved patient data
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Prescription endpoint - must come before generic :id routes
+app.get("/patients/:id/prescription", async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Fetching prescription for patient ID:", id);
+    
+    const patient = await Patient.findById(id);
+    
+    if (!patient) {
+      console.log("Patient not found:", id);
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    
+    if (!patient.prescription_pdf) {
+      console.log("No prescription found for patient:", patient.patient_id);
+      return res.status(404).json({ message: "No prescription found for this patient" });
+    }
+    
+    console.log("Found prescription for patient:", patient.patient_id);
+    
+    // If the prescription is stored as a data URI
+    if (patient.prescription_pdf.startsWith('data:application/pdf;base64,')) {
+      // Extract the base64 data
+      const base64Data = patient.prescription_pdf.split(',')[1];
+      const pdfBuffer = Buffer.from(base64Data, 'base64');
+      
+      // Set response headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="prescription_${patient.patient_id}.pdf"`);
+      
+      // Send the PDF data
+      return res.send(pdfBuffer);
+    }
+    
+    // If it's just a base64 string without the data URI prefix
+    const pdfBuffer = Buffer.from(patient.prescription_pdf, 'base64');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="prescription_${patient.patient_id}.pdf"`);
+    return res.send(pdfBuffer);
+    
+  } catch (error) {
+    console.error("Error retrieving prescription:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -142,6 +205,7 @@ app.put("/patients/:id", async (req, res) => {
   }
 });
 
+// Delete Patient
 app.delete("/patients/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -155,19 +219,7 @@ app.delete("/patients/:id", async (req, res) => {
   }
 });
 
-// Add this route before your existing routes
-app.get("/patients/next-id", async (req, res) => {
-  try {
-    const patients = await Patient.find().sort({ patient_id: -1 }).limit(1);
-    const lastId = patients.length > 0 ? parseInt(patients[0].patient_id.substring(1)) : 0;
-    const nextId = `P${String(lastId + 1).padStart(3, '0')}`;
-    res.json({ nextId });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Add this before app.listen()
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send('Something broke!');

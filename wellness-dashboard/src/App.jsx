@@ -9,9 +9,12 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ViewPrescription from './components/ViewPrescription';
+import PatientList from "./components/PatientList";
 
 function AppContent() {
   const [patients, setPatients] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { isAuthenticated, userType, loading } = useAuth();
 
@@ -21,6 +24,26 @@ function AppContent() {
     try {
       const response = await axios.get("http://localhost:3000/patients");
       setPatients(response.data);
+      
+      // Extract appointments from all patients
+      const allAppointments = response.data.reduce((acc, patient) => {
+        if (patient.appointments && Array.isArray(patient.appointments)) {
+          const patientAppointments = patient.appointments.map(appointment => ({
+            id: appointment._id || `${patient._id}-${Math.random().toString(36).substr(2, 9)}`,
+            patientId: patient.patient_id,  // Make sure this is included
+            patientName: patient.name,
+            date: appointment.date,
+            time: appointment.time || '10:00 AM',
+            doctor: appointment.doctor,
+            department: appointment.department,
+            status: appointment.status || 'Pending'
+          }));
+          return [...acc, ...patientAppointments];
+        }
+        return acc;
+      }, []);
+      
+      setAppointments(allAppointments);
     } catch (error) {
       console.error("Error fetching patients:", error);
     }
@@ -99,20 +122,29 @@ function AppContent() {
             path="/patients" 
             element={
               <ProtectedRoute allowedUserTypes={['doctor']}>
-                <Dashboard patients={patients} setPatients={setPatients} />
+                <PatientList patients={patients} setPatients={setPatients} />
               </ProtectedRoute>
             } 
           />
-          
+          {/* Edit patient route */}
+          <Route 
+            path="/edit-patient/:id" 
+            element={
+              <ProtectedRoute allowedUserTypes={['doctor']}>
+                <AddPatientForm onPatientAdded={handlePatientAdded} />
+              </ProtectedRoute>
+            } 
+          />
           {/* Both doctor and patient can access appointments */}
           <Route 
             path="/appointments" 
             element={
               <ProtectedRoute>
-                <Appointments />
+                <Appointments appointments={appointments} />
               </ProtectedRoute>
             } 
           />
+          <Route path="/patients/:id/prescription" element={<ViewPrescription />} />
         </Routes>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const Dashboard = ({ patients, setPatients }) => {
+const Dashboard = ({ patients, setPatients, onPatientUpdated }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,17 +35,20 @@ const Dashboard = ({ patients, setPatients }) => {
   const handleUpdate = async () => {
     try {
       const response = await axios.put(`http://localhost:3000/patients/${selectedPatient._id}`, selectedPatient);
-  
-      // Update the state immediately
-      setPatients((prevPatients) =>
-        prevPatients.map((patient) =>
-          patient._id === selectedPatient._id ? response.data : patient
-        )
+      
+      // Update the patients list
+      const updatedPatients = patients.map(patient => 
+        patient._id === selectedPatient._id ? response.data : patient
       );
-  
-      // Close the modal after successful update
-      setIsModalOpen(false);
-      setSelectedPatient(null); // Reset selected patient
+      setPatients(updatedPatients);
+      
+      // Close the modal
+      handleCloseModal();
+      
+      // Call the onPatientUpdated callback to refresh appointments
+      if (onPatientUpdated) {
+        onPatientUpdated();
+      }
     } catch (error) {
       console.error("Error updating patient:", error);
     }
@@ -99,84 +102,151 @@ const Dashboard = ({ patients, setPatients }) => {
     
 
   return (
-    <div className="p-6 text-white">
+    <div className="container mx-auto px-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Patient Records</h1>
-        <div className="relative w-full md:w-1/3 lg:w-1/4 max-w-lg ml-4">
-          <input
-            type="text"
-            placeholder="Search patients..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-2 pl-8 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <svg
-            className="absolute left-2 top-2.5 h-5 w-5 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <h1 className="text-2xl font-bold">Patient Records</h1>
+        <div className="flex space-x-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search patients..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </svg>
+            <svg
+              className="absolute right-3 top-3 h-5 w-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 
-      <table className="w-full border-collapse border border-gray-600 shadow-lg">
-        <thead>
-          <tr className="bg-gray-900 text-white">
-            <th className="p-3 border">ID</th>
-            <th className="p-3 border">Name</th>
-            <th className="p-3 border">Age</th>
-            <th className="p-3 border">Gender</th>
-            <th className="p-3 border">Medical History</th>
-            <th className="p-3 border">Appointments</th>
-            <th className="p-3 border">Diagnostics</th>
-            <th className="p-3 border">Mental Health</th>
-            <th className="p-3 border">Physiotherapy</th>
-            <th className="p-3 border">Nutrition</th>
-            <th className="p-3 border">Yoga</th>
-            <th className="p-3 border">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredPatients.map((patient) => (
-            <tr key={patient._id} className="bg-gray-800 border-b border-gray-600">
-              <td className="p-3 border">{patient.patient_id}</td>
-              <td className="p-3 border">{patient.name}</td>
-              <td className="p-3 border">{patient.age}</td>
-              <td className="p-3 border">{patient.gender}</td>
-              <td className="p-3 border">{patient.medical_history?.map((m) => m.condition).join(", ")}</td>
-              <td className="p-3 border">{patient.appointments?.map((a) => `${a.date} - ${a.doctor}`).join(", ")}</td>
-              <td className="p-3 border">{patient.diagnostics?.map((d) => d.test_name).join(", ")}</td>
-              <td className="p-3 border">{patient.mental_health?.map((mh) => mh.evaluation).join(", ")}</td>
-              <td className="p-3 border">{patient.physiotherapy?.map((p) => p.progress_log).join(", ")}</td>
-              <td className="p-3 border">{patient.nutrition?.map((n) => n.dietary_plan).join(", ")}</td>
-              <td className="p-3 border">{patient.yoga?.map((y) => y.session_plan).join(", ")}</td>
-              <td className="p-4 flex gap-3 justify-end">
-                <button
-                  onClick={() => handleEdit(patient)}
-                  className="bg-green-500 hover:bg-green-700 text-white px-3 py-1 rounded"
-                >
-                  Update
-                </button>
-                <button
-                  onClick={() => handleDelete(patient._id)}
-                  className="bg-green-500 hover:bg-green-700 text-white px-3 py-1 rounded"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {patients.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-300 text-lg">No patients found.</p>
+          <p className="text-gray-400">Add a new patient to get started.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-gray-700 rounded-lg overflow-hidden">
+            <thead className="bg-gray-600">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Patient ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Age
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Gender
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Medical History
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Appointments
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Prescriptions
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-600">
+              {filteredPatients.map((patient) => (
+                <tr key={patient._id} className="hover:bg-gray-600">
+                  <td className="px-6 py-4 whitespace-nowrap">{patient.patient_id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{patient.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{patient.age}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{patient.gender}</td>
+                  <td className="px-6 py-4">
+                    {patient.medical_history && patient.medical_history.length > 0 ? (
+                      <ul className="list-disc list-inside">
+                        {patient.medical_history.map((history, index) => (
+                          <li key={index}>
+                            {history.condition}{" "}
+                            {history.diagnosed_on && `(${history.diagnosed_on})`}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-gray-400">No medical history</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {patient.appointments && patient.appointments.length > 0 ? (
+                      <ul className="list-disc list-inside">
+                        {patient.appointments.map((appointment, index) => (
+                          <li key={index}>
+                            {appointment.date}{" "}
+                            {appointment.doctor && `with ${appointment.doctor}`}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-gray-400">No appointments</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {patient.prescriptions && patient.prescriptions.length > 0 ? (
+                      <div>
+                        <span className="text-blue-400 cursor-pointer" onClick={() => window.open(patient.prescription_pdf)}>
+                          View Prescription
+                        </span>
+                        <ul className="list-disc list-inside mt-1">
+                          {patient.prescriptions.slice(0, 2).map((prescription, index) => (
+                            <li key={index} className="text-sm">
+                              {prescription.medicine} ({prescription.dosage})
+                            </li>
+                          ))}
+                          {patient.prescriptions.length > 2 && (
+                            <li className="text-sm text-gray-400">
+                              +{patient.prescriptions.length - 2} more...
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">No prescriptions</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => handleEdit(patient)}
+                      className="text-blue-400 hover:text-blue-300 mr-3"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(patient._id)}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Modal for Updating Patient */}
+      {/* Modal for editing patient */}
       {isModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto p-4">
           <div className="bg-gray-900 p-6 rounded-lg w-11/12 md:w-3/4 lg:w-1/2 max-h-[90vh] overflow-y-auto my-4">
@@ -229,15 +299,10 @@ const Dashboard = ({ patients, setPatients }) => {
               </div>
 
               {/* Dynamic Sections */}
-              {["medical_history", "appointments", "diagnostics", "mental_health", "physiotherapy", "nutrition", "yoga"].map((category) => {
+              {["medical_history", "appointments"].map((category) => {
                 const defaultFields = {
                   medical_history: ["condition", "diagnosed_on"],
-                  appointments: ["date", "doctor", "department"],
-                  diagnostics: ["test_name", "result", "date"],
-                  mental_health: ["session_notes", "evaluation", "therapist"],
-                  physiotherapy: ["progress_log", "session_date"],
-                  nutrition: ["dietary_plan", "calorie_intake", "progress"],
-                  yoga: ["session_plan", "wearable_data"]
+                  appointments: ["date", "time", "doctor", "department", "status"]
                 };
 
                 return (
@@ -250,11 +315,10 @@ const Dashboard = ({ patients, setPatients }) => {
                             <label className="block text-xs capitalize mb-1">{field.replace("_", " ")}</label>
                             <input
                               type={
-                                (category === "appointments" && field === "date") ||
-                                (category === "diagnostics" && field === "date")
+                                (category === "appointments" && field === "date")
                                   ? "date"
-                                  : field.includes("calorie")
-                                  ? "number"
+                                  : (category === "appointments" && field === "time")
+                                  ? "time"
                                   : "text"
                               }
                               value={entry[field] || ""}

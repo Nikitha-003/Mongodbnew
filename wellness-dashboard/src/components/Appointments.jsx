@@ -1,133 +1,103 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
 
-const Appointments = () => {
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { userType, isAuthenticated } = useAuth();
-
+const Appointments = ({ appointments }) => {
+  const [sortedAppointments, setSortedAppointments] = useState([]);
+  
+  // Sort appointments by date and time when appointments prop changes
   useEffect(() => {
-    // Check if user is authenticated
-    if (!isAuthenticated) {
-      setError('You must be logged in to view appointments');
-      setLoading(false);
-      return;
+    if (appointments && appointments.length > 0) {
+      const sorted = [...appointments].sort((a, b) => {
+        // First sort by date
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        
+        if (dateA.getTime() !== dateB.getTime()) {
+          return dateA - dateB;
+        }
+        
+        // If dates are the same, sort by time
+        const timeA = a.time ? a.time : '00:00';
+        const timeB = b.time ? b.time : '00:00';
+        
+        return timeA.localeCompare(timeB);
+      });
+      
+      setSortedAppointments(sorted);
+    } else {
+      setSortedAppointments([]);
     }
-
-    const fetchAppointments = async () => {
-      try {
-        // For now, we'll use mock data since the API endpoint might not be ready
-        // In a real app, you would fetch from your backend
-        // const response = await axios.get('http://localhost:3000/appointments');
-        // setAppointments(response.data);
-        
-        // Mock data for testing
-        const mockAppointments = [
-          {
-            id: '1',
-            date: '2023-06-15',
-            time: '10:00 AM',
-            doctor: 'Dr. Smith',
-            department: 'Cardiology',
-            status: 'Confirmed'
-          },
-          {
-            id: '2',
-            date: '2023-06-20',
-            time: '2:30 PM',
-            doctor: 'Dr. Johnson',
-            department: 'Neurology',
-            status: 'Pending'
-          },
-          {
-            id: '3',
-            date: '2023-06-25',
-            time: '11:15 AM',
-            doctor: 'Dr. Williams',
-            department: 'Orthopedics',
-            status: 'Confirmed'
-          }
-        ];
-        
-        setAppointments(mockAppointments);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
-        setError('Failed to load appointments. Please try again later.');
-        setLoading(false);
-      }
-    };
-
-    fetchAppointments();
-  }, [isAuthenticated]);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <strong className="font-bold">Error!</strong>
-        <span className="block sm:inline"> {error}</span>
-      </div>
-    );
-  }
+  }, [appointments]);
 
   return (
     <div className="container mx-auto px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Appointments</h1>
-        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-          {userType === 'patient' ? 'Book New Appointment' : 'Create Appointment'}
-        </button>
-      </div>
-
-      {appointments.length === 0 ? (
+      <h1 className="text-2xl font-bold mb-6">Appointments</h1>
+      
+      {sortedAppointments.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-300 text-lg">No appointments found.</p>
-          <p className="text-gray-400">Book a new appointment to get started.</p>
+          <p className="text-gray-400">Add appointments to patients to see them here.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full bg-gray-700 rounded-lg overflow-hidden">
             <thead className="bg-gray-600">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Doctor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Patient ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Patient Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Doctor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Department
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-600">
-              {appointments.map((appointment) => (
-                <tr key={appointment.id} className="hover:bg-gray-600">
-                  <td className="px-6 py-4 whitespace-nowrap">{appointment.date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{appointment.time}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{appointment.doctor}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{appointment.department}</td>
+              {sortedAppointments.map((appointment, index) => (
+                <tr key={appointment.id || index} className="hover:bg-gray-600">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      appointment.status === 'Confirmed' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {appointment.status}
-                    </span>
+                    {appointment.patientId}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-blue-400 hover:text-blue-300 mr-3">View</button>
-                    {appointment.status !== 'Confirmed' && (
-                      <button className="text-red-400 hover:text-red-300">Cancel</button>
-                    )}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {appointment.patientName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {appointment.date}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {appointment.time || "N/A"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {appointment.doctor || "N/A"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {appointment.department || "N/A"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        appointment.status === "Confirmed"
+                          ? "bg-green-100 text-green-800"
+                          : appointment.status === "Cancelled"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {appointment.status || "Pending"}
+                    </span>
                   </td>
                 </tr>
               ))}
