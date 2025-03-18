@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children, allowedUserTypes = ['doctor', 'patient'] }) => {
+const ProtectedRoute = ({ children, allowedUserTypes = ['doctor', 'patient', 'admin'] }) => {
   const { isAuthenticated, userType, loading } = useAuth();
 
   console.log('ProtectedRoute - Auth State:', { isAuthenticated, userType, loading });
@@ -25,10 +25,13 @@ const ProtectedRoute = ({ children, allowedUserTypes = ['doctor', 'patient'] }) 
   // If user type is not allowed, redirect to appropriate page
   if (!allowedUserTypes.includes(userType)) {
     console.log('User type not allowed:', userType);
-    return <Navigate to={userType === 'doctor' ? '/patients' : '/appointments'} replace />;
+    return <Navigate to={
+      userType === 'doctor' ? '/patients' : 
+      userType === 'admin' ? '/admin' :
+      '/appointments'
+    } replace />;
   }
 
-  // If authenticated and allowed, render the children
   return children;
 };
 

@@ -58,14 +58,14 @@ export const AuthProvider = ({ children }) => {
     
     setIsAuthenticated(true);
     setUserType(type);
-    localStorage.setItem('userType', type);
+    localStorage.setItem('userType', type); // Changed from response.data.userType to type
     
     if (userData) {
       setUser(userData);
     }
     
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem('token', token); // Changed from response.data.token to token
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
   };
