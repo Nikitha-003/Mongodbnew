@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import config from '../config/config'; // Add this import
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth(); // Get token from auth context
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/appointments', {
+        // Replace hardcoded URL with config.API_URL
+        const response = await axios.get(`${config.API_URL}/appointments`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
+            Authorization: `Bearer ${token || localStorage.getItem('token')}`
           }
         });
         
@@ -28,7 +30,7 @@ const Dashboard = () => {
     };
 
     fetchAppointments();
-  }, []);
+  }, [token]); // Add token to dependency array
 
   // Make sure appointments is an array before filtering
   const upcomingAppointments = Array.isArray(appointments) 

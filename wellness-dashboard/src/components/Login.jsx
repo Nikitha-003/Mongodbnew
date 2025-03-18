@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import config from '../config/config'; // Add this import
 
 const Login = () => {
   const [userType, setUserType] = useState('');
@@ -31,7 +32,8 @@ const Login = () => {
       
       // For now, let's handle both API and fallback authentication
       try {
-        const response = await axios.post('http://localhost:3000/login', {
+        // Update the URL to use config
+        const response = await axios.post(`${config.API_URL}/login`, {
           email,
           password,
           userType

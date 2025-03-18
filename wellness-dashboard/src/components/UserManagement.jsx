@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config/config'; // Fix the path if needed
+import { useAuth } from '../context/AuthContext'; // Add this import
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { token } = useAuth(); // Get token from auth context
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
@@ -20,7 +23,11 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3000/admin/users');
+      const response = await axios.get(`${config.API_URL}/admin/users`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       setUsers(response.data);
       setLoading(false);
     } catch (err) {
@@ -30,10 +37,11 @@ const UserManagement = () => {
     }
   };
 
+  // Also update the handleAddUser function to use config.API_URL
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3000/register', newUser);
+      await axios.post(`${config.API_URL}/register`, newUser);
       fetchUsers();
       setIsAddModalOpen(false);
       setNewUser({

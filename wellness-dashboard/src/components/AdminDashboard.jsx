@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import UserManagement from './UserManagement';
 import axios from 'axios';
+import config from '../config/config';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/admin/stats', {
+        const response = await axios.get(`${config.API_URL}/admin/stats`, {          
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }

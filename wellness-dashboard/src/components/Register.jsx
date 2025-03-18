@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import config from '../config/config'; // Add this import
 
 const Register = () => {
   const [userType, setUserType] = useState('');
@@ -34,8 +35,8 @@ const Register = () => {
       // Log the data being sent
       console.log('Sending registration data:', { name, email, password: '****', userType });
       
-      // Make sure we're using the correct API endpoint
-      const response = await axios.post('http://localhost:3000/register', {
+      // Update the URL to use config
+      const response = await axios.post(`${config.API_URL}/register`, {
         name,
         email,
         password,
