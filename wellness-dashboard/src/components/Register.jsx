@@ -21,32 +21,28 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
-      return;
-    }
-
+    // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
-
+    
     try {
       setIsLoading(true);
       setError('');
       
+      // Log the data being sent
+      console.log('Sending registration data:', { name, email, password: '****', userType });
+      
+      // Make sure we're using the correct API endpoint
       const response = await axios.post('http://localhost:3000/register', {
         name,
         email,
         password,
         userType
       });
+      
+      console.log('Registration response:', response.data);
       
       setSuccess('Registration successful! You can now login.');
       
@@ -63,10 +59,15 @@ const Register = () => {
       
     } catch (error) {
       console.error('Registration error:', error);
-      setError(
-        error.response?.data?.message || 
-        'Registration failed. Please try again.'
-      );
+      // Show more detailed error message
+      if (error.response) {
+        setError(`Registration failed: ${error.response.data.message || error.response.statusText}`);
+        console.error('Error response data:', error.response.data);
+      } else if (error.request) {
+        setError('No response from server. Please check your connection.');
+      } else {
+        setError(`Error: ${error.message}`);
+      }
     } finally {
       setIsLoading(false);
     }

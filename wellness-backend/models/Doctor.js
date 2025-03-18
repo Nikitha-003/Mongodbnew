@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-const userSchema = new mongoose.Schema({
+const doctorSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
@@ -15,13 +15,29 @@ const userSchema = new mongoose.Schema({
   },
   userType: {
     type: String,
-    enum: ['admin'],
-    default: 'admin'
+    default: 'doctor',
+    enum: ['doctor']
   },
   name: {
     type: String,
     required: true
   },
+  specialization: {
+    type: String,
+    default: 'General Physician'
+  },
+  experience: {
+    type: Number,
+    default: 0
+  },
+  contactNumber: {
+    type: String
+  },
+  availability: [{
+    day: String,
+    startTime: String,
+    endTime: String
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -29,7 +45,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+doctorSchema.pre('save', async function(next) {
   // Only hash the password if it's modified (or new)
   if (!this.isModified('password')) return next();
   
@@ -45,10 +61,10 @@ userSchema.pre('save', async function(next) {
 });
 
 // Method to compare passwords
-userSchema.methods.comparePassword = async function(candidatePassword) {
+doctorSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema, "users");
+const Doctor = mongoose.model("Doctor", doctorSchema, "doctors");
 
-module.exports = User;
+module.exports = Doctor;

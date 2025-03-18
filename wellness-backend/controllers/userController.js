@@ -1,31 +1,93 @@
 const User = require('../models/User');
+const Doctor = require('../models/Doctor');
+const Patient = require('../models/Patient');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || "wellness-portal-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "4371056fabcb0502e5f9fdcb5e4ba943ee5a0d16a2bcbc55289e95448bfe58f8af5e1e43c0369095b01ddfb4a7";
 
 // Register a new user
 exports.registerUser = async (req, res) => {
   try {
     const { email, password, userType, name } = req.body;
     
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    console.log('Attempting to register user:', { email, userType, name });
+    
+    // Validate required fields
+    if (!email || !password || !userType || !name) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+    
+    // Check if user already exists in any collection
+    let existingUser = null;
+    
+    if (userType === 'doctor') {
+      existingUser = await Doctor.findOne({ email });
+    } else if (userType === 'patient') {
+      existingUser = await Patient.findOne({ email });
+    } else if (userType === 'admin') {
+      existingUser = await User.findOne({ email });
+    } else {
+      return res.status(400).json({ message: "Invalid user type" });
+    }
+    
     if (existingUser) {
+      console.log('User already exists:', email);
       return res.status(400).json({ message: "User already exists" });
     }
     
-    // Create new user
-    const user = new User({
-      email,
-      password,
-      userType,
-      name
-    });
+    // Create new user based on userType
+    let savedUser;
     
-    await user.save();
+    if (userType === 'doctor') {
+      const doctor = new Doctor({
+        email,
+        password,
+        name
+      });
+      savedUser = await doctor.save();
+    } else if (userType === 'patient') {
+      // Get next patient ID
+      const lastPatient = await Patient.findOne().sort({ patient_id: -1 });
+      let patientId = 'P001';
+      
+      if (lastPatient) {
+        const lastId = lastPatient.patient_id;
+        const numericPart = parseInt(lastId.substring(1));
+        const nextNumericPart = numericPart + 1;
+        patientId = 'P' + nextNumericPart.toString().padStart(3, '0');
+      }
+      
+      const patient = new Patient({
+        patient_id: patientId,
+        email,
+        password,
+        name
+      });
+      savedUser = await patient.save();
+    } else if (userType === 'admin') {
+      const admin = new User({
+        email,
+        password,
+        name
+      });
+      savedUser = await admin.save();
+    }
     
+    console.log('User registered successfully:', savedUser._id);
     res.status(201).json({ message: "User registered successfully" });
+    
   } catch (error) {
+    console.error('Error registering user:', error);
+    
+    // Check for validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: "Validation error", 
+        errors: validationErrors 
+      });
+    }
+    
     res.status(500).json({ message: error.message });
   }
 };
@@ -35,35 +97,59 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password, userType } = req.body;
     
-    // Find user by email and userType
-    const user = await User.findOne({ email, userType });
+    console.log('Login attempt:', { email, userType });
+    
+    // Find user by email and userType in the appropriate collection
+    let user = null;
+    
+    if (userType === 'doctor') {
+      user = await Doctor.findOne({ email });
+    } else if (userType === 'patient') {
+      user = await Patient.findOne({ email });
+    } else if (userType === 'admin') {
+      user = await User.findOne({ email });
+    } else {
+      return res.status(400).json({ message: "Invalid user type" });
+    }
+    
     if (!user) {
+      console.log('User not found:', email);
       return res.status(401).json({ message: "Invalid credentials" });
     }
     
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log('Password mismatch for user:', email);
       return res.status(401).json({ message: "Invalid credentials" });
     }
     
-    // Generate JWT token
+    // Generate JWT token with all necessary user information
     const token = jwt.sign(
-      { id: user._id, email: user.email, userType: user.userType, name: user.name },
+      { 
+        id: user._id, 
+        email: user.email, 
+        userType: user.userType, 
+        name: user.name 
+      },
       JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '24h' } // Extend token expiration to 24 hours
     );
+    
+    console.log('Login successful for:', email, 'userType:', user.userType);
     
     res.json({
       token,
       user: {
         id: user._id,
         email: user.email,
-        name: user.name,
-        userType: user.userType
+        userType: user.userType,
+        name: user.name
       }
     });
+    
   } catch (error) {
+    console.error('Error logging in:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -71,9 +157,17 @@ exports.loginUser = async (req, res) => {
 // Get all users (admin only)
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}, '-password');
-    res.json(users);
+    // Get users from all collections
+    const admins = await User.find({}, '-password');
+    const doctors = await Doctor.find({}, '-password');
+    const patients = await Patient.find({}, '-password');
+    
+    // Combine all users
+    const allUsers = [...admins, ...doctors, ...patients];
+    
+    res.json(allUsers);
   } catch (error) {
+    console.error('Error fetching users:', error);
     res.status(500).json({ message: error.message });
   }
 };

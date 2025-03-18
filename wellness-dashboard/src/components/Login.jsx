@@ -43,7 +43,13 @@ const Login = () => {
         login(user.userType, user, token);
         
         // Redirect based on user type
-        navigate(user.userType === 'doctor' ? '/patients' : '/appointments');
+        if (user.userType === 'doctor') {
+          navigate('/patients');
+        } else if (user.userType === 'admin') {
+          navigate('/admin/dashboard'); // Add proper admin route
+        } else {
+          navigate('/appointments'); // Default for patients
+        }
       } catch (apiError) {
         console.log('API login failed, trying fallback:', apiError);
         
@@ -63,6 +69,20 @@ const Login = () => {
           } else {
             throw new Error('Invalid patient credentials');
           }
+        } // In the fallback admin authentication section (around line 73-78)
+        else if (userType === 'admin') {
+        // Modified this part to accept admin@wellness.com or any email with admin@
+        if (email === 'admin@example.com' && password === 'password' ||
+            email === 'admin@wellness.com' && password === 'password' ||
+            email.includes('admin@') && password === 'password') {
+        // Generate a mock token for fallback authentication
+        const mockToken = 'fallback-admin-token-' + Date.now();
+        // Pass userType, userData and token
+        login('admin', { id: 'admin-123', email, name: 'Admin User', userType: 'admin' }, mockToken);
+        navigate('/admin/dashboard');
+        } else {
+        throw new Error('Invalid admin credentials');
+        }
         } else {
           throw new Error('Invalid user type');
         }
@@ -122,8 +142,13 @@ const Login = () => {
         ) : (
           <div>
             <div className="flex justify-between items-center mb-6">
+              {/* Remove the comment that's showing up in the UI */}
               <h2 className="text-xl font-semibold">
-                {userType === 'doctor' ? 'Doctor Login' : 'Patient Login'}
+                {userType === 'doctor' 
+                  ? 'Doctor Login' 
+                  : userType === 'admin' 
+                    ? 'Admin Login' 
+                    : 'Patient Login'}
               </h2>
               <button 
                 onClick={() => setUserType('')}

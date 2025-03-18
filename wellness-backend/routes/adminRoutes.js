@@ -1,47 +1,29 @@
-// Make sure you have this route in your adminRoutes.js file
 const express = require('express');
 const router = express.Router();
+const { authenticateToken, authorizeAdmin } = require('../middleware/authMiddleware');
 const userController = require('../controllers/userController');
-const { authenticateToken, isAdmin } = require('../middleware/authMiddleware');
-const User = require('../models/User'); // Make sure this import is present
+const User = require('../models/User');
+const Doctor = require('../models/Doctor');
+const Patient = require('../models/Patient');
 
 // Get all users (admin only)
-router.get('/users', authenticateToken, isAdmin, userController.getAllUsers);
-
-// Get user by ID (admin only)
-router.get('/users/:id', authenticateToken, isAdmin, userController.getUserById);
-
-// Update user (admin only)
-router.put('/users/:id', authenticateToken, isAdmin, userController.updateUser);
-
-// Delete user (admin only)
-router.delete('/users/:id', authenticateToken, isAdmin, userController.deleteUser);
+router.get('/users', authenticateToken, authorizeAdmin, userController.getAllUsers);
 
 // Stats route for admin dashboard
-router.get('/stats', authenticateToken, isAdmin, async (req, res) => {
+router.get('/stats', authenticateToken, authorizeAdmin, async (req, res) => {
   try {
-    // Get all users and count them manually to debug
-    const allUsers = await User.find({});
-    console.log('Total users found:', allUsers.length);
+    console.log('Fetching admin stats');
     
-    // Log each user's userType to see what's actually in the database
-    allUsers.forEach(user => {
-      console.log(`User ${user.email} has userType: "${user.userType}"`);
-    });
+    // Count users in each collection
+    const adminCount = await User.countDocuments();
+    const doctorCount = await Doctor.countDocuments();
+    const patientCount = await Patient.countDocuments();
     
-    // Count manually
-    let doctorCount = 0;
-    let patientCount = 0;
-    
-    allUsers.forEach(user => {
-      if (user.userType === 'doctor') doctorCount++;
-      if (user.userType === 'patient') patientCount++;
-    });
-    
-    console.log(`Manual counts: Total=${allUsers.length}, Doctors=${doctorCount}, Patients=${patientCount}`);
+    console.log(`Stats: admins=${adminCount}, doctors=${doctorCount}, patients=${patientCount}`);
     
     res.json({
-      totalUsers: allUsers.length,
+      totalUsers: adminCount + doctorCount + patientCount,
+      admins: adminCount,
       doctors: doctorCount,
       patients: patientCount
     });
@@ -50,5 +32,14 @@ router.get('/stats', authenticateToken, isAdmin, async (req, res) => {
     res.status(500).json({ message: 'Error fetching statistics' });
   }
 });
+
+// Get user by ID (admin only)
+router.get('/users/:id', authenticateToken, authorizeAdmin, userController.getUserById);
+
+// Update user (admin only)
+router.put('/users/:id', authenticateToken, authorizeAdmin, userController.updateUser);
+
+// Delete user (admin only)
+router.delete('/users/:id', authenticateToken, authorizeAdmin, userController.deleteUser);
 
 module.exports = router;

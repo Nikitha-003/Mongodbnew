@@ -23,30 +23,19 @@ const formatDate = () => {
   return new Date().toISOString();
 };
 
-// Logger functions
+// Simple logger utility
 const logger = {
+  request: (req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+    next();
+  },
+  
   error: (message, error) => {
-    const logMessage = `[${formatDate()}] ERROR: ${message} ${error ? '- ' + error.stack : ''}\n`;
-    errorLogStream.write(logMessage);
-    console.error(message, error);
+    console.error(`${new Date().toISOString()} - ERROR: ${message}`, error);
   },
   
   info: (message) => {
-    const logMessage = `[${formatDate()}] INFO: ${message}\n`;
-    accessLogStream.write(logMessage);
-    console.log(message);
-  },
-  
-  request: (req, res, next) => {
-    const start = Date.now();
-    
-    res.on('finish', () => {
-      const duration = Date.now() - start;
-      const logMessage = `[${formatDate()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms\n`;
-      accessLogStream.write(logMessage);
-    });
-    
-    next();
+    console.log(`${new Date().toISOString()} - INFO: ${message}`);
   }
 };
 

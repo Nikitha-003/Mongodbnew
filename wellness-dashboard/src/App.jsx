@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ViewPrescription from "./components/ViewPrescription";
 import AddDoctor from './components/AddDoctor';
+import config from './config/config'; // Move the import here at the top level
 
 function App() {
   return (
@@ -34,7 +35,8 @@ function AppContent() {
 
   const fetchPatients = async () => {
     try {
-      const response = await axios.get("http://localhost:3000/patients");
+      // Use the config.API_URL for the API endpoint
+      const response = await axios.get(`${config.API_URL}/patients`);
       setPatients(response.data);
       
       // Extract appointments from all patients

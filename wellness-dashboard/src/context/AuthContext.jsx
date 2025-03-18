@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { logAuthState } from '../utils/debugUtils';
 
 const AuthContext = createContext(null);
 
@@ -8,65 +9,78 @@ export const AuthProvider = ({ children }) => {
   const [userType, setUserType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null); // Add token state
 
+  // Clear auth state function
+  const clearAuthState = () => {
+    setIsAuthenticated(false);
+    setUserType(null);
+    setUser(null);
+    setToken(null); // Clear token state
+    delete axios.defaults.headers.common['Authorization'];
+  };
+
+  // Check authentication status on component mount
   useEffect(() => {
-    // Clear any existing auth state first
-    const clearAuthState = () => {
-      setIsAuthenticated(false);
-      setUserType(null);
-      setUser(null);
-      delete axios.defaults.headers.common['Authorization'];
-    };
-
-    // Check if user is authenticated from localStorage
     const checkAuth = () => {
-      const token = localStorage.getItem('token');
-      const storedUserType = localStorage.getItem('userType');
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
       
-      console.log('AuthContext - Checking auth:', { token: !!token, userType: storedUserType });
-      
-      if (token && storedUserType) {
-        // Set default authorization header for all requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setIsAuthenticated(true);
-        setUserType(storedUserType);
-        
-        // Create a basic user object if we don't have full user data
-        if (!user) {
-          setUser({
-            userType: storedUserType
+      if (storedToken && storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          setIsAuthenticated(true);
+          setUserType(user.userType);
+          setUser(user);
+          setToken(storedToken);
+          
+          // Set axios default header
+          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          
+          logAuthState('AuthContext - Restored Auth', { 
+            isAuthenticated: true, 
+            userType: user.userType, 
+            user, 
+            token: storedToken 
           });
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          clearAuthState();
         }
       } else {
-        // Clear any existing auth state if token or userType is missing
         clearAuthState();
-        // Also clear localStorage to ensure consistency
-        localStorage.removeItem('token');
-        localStorage.removeItem('userType');
       }
-      
       setLoading(false);
     };
-
+    
     // Run the auth check
-    clearAuthState();
     checkAuth();
   }, []);
 
-  const login = (type, userData = null, token = null) => {
-    console.log('AuthContext - Login:', { type, userData, hasToken: !!token });
-    
-    setIsAuthenticated(true);
-    setUserType(type);
-    localStorage.setItem('userType', type); // Changed from response.data.userType to type
-    
-    if (userData) {
+  // Login function
+  const login = (userType, userData, authToken) => {
+    try {
+      // Store token and user data in localStorage
+      localStorage.setItem('token', authToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Update state
+      setIsAuthenticated(true);
+      setUserType(userType);
       setUser(userData);
-    }
-    
-    if (token) {
-      localStorage.setItem('token', token); // Changed from response.data.token to token
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setToken(authToken);
+      
+      // Set axios default header
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      
+      logAuthState('AuthContext - Login', { 
+        isAuthenticated: true, 
+        userType, 
+        user: userData, 
+        token: authToken 
+      });
+    } catch (error) {
+      console.error('Error during login:', error);
     }
   };
 
@@ -76,8 +90,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     setUserType(null);
     setUser(null);
+    setToken(null); // Clear token state
     localStorage.removeItem('token');
     localStorage.removeItem('userType');
+    localStorage.removeItem('user'); // Added to remove user data
+    localStorage.removeItem('isAuthenticated'); // Added to remove authentication flag
     // Remove authorization header
     delete axios.defaults.headers.common['Authorization'];
   };
@@ -88,6 +105,7 @@ export const AuthProvider = ({ children }) => {
       userType, 
       loading, 
       user,
+      token, // Expose token to components
       login, 
       logout 
     }}>
