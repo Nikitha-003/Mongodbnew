@@ -1,5 +1,5 @@
 const config = {
-  API_URL: 'http://localhost:3003', // Use the port your backend is running on
+  API_URL: 'http://localhost:3000', // Use the port your backend is running on
   
   // Add some debugging info to help troubleshoot
   DEBUG: true,

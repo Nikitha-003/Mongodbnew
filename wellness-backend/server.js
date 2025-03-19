@@ -41,6 +41,11 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Add a root route handler (add this before the 404 handler)
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to the Wellness API' });
+});
+
 // Handle 404 errors for routes that don't exist
 app.use((req, res, next) => {
   console.log(`404 Not Found: ${req.method} ${req.originalUrl}`);
