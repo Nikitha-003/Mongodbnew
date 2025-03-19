@@ -23,7 +23,7 @@ const PatientList = ({ patients, setPatients }) => {
     // Auto-hide after 3 seconds
     setTimeout(() => {
       setNotification({ show: false, message: "", type: "" });
-    }, 3000);
+    }, 3001);
   }, []);
 
   // Filter patients based on search term
@@ -45,7 +45,7 @@ const PatientList = ({ patients, setPatients }) => {
   // Optimized delete handler with useCallback
   const handleDelete = useCallback(async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/patients/${id}`);
+      await axios.delete(`http://localhost:3001/patients/${id}`);
       setPatients((prevPatients) => prevPatients.filter((patient) => patient._id !== id));
       showNotification("Patient deleted successfully");
     } catch (error) {
@@ -72,7 +72,7 @@ const PatientList = ({ patients, setPatients }) => {
       if (!selectedPatient) return;
       
       const response = await axios.put(
-        `http://localhost:3000/patients/${selectedPatient._id}`, 
+        `http://localhost:3001/patients/${selectedPatient._id}`, 
         selectedPatient
       );
       
@@ -195,7 +195,7 @@ const PatientList = ({ patients, setPatients }) => {
       };
       
       // Save the updated patient to the database
-      await axios.put(`http://localhost:3000/patients/${patient._id}`, updatedPatient);
+      await axios.put(`http://localhost:3001/patients/${patient._id}`, updatedPatient);
       
       // Update the patients list with minimal re-rendering
       setPatients(prevPatients => 

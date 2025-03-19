@@ -28,7 +28,7 @@ const PatientDetails = ({ fetchPatients }) => {
   useEffect(() => {
     const fetchPatient = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/patients/${id}`);
+        const response = await axios.get(`http://localhost:3001/patients/${id}`);
         setPatient(response.data);
         setFormData(response.data);
         if (response.data.prescription) {
@@ -56,7 +56,7 @@ const PatientDetails = ({ fetchPatients }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:3000/patients/${id}`, formData);
+      await axios.put(`http://localhost:3001/patients/${id}`, formData);
       setPatient(formData);
       setIsEditing(false);
       if (fetchPatients) fetchPatients();
@@ -69,7 +69,7 @@ const PatientDetails = ({ fetchPatients }) => {
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this patient?')) {
       try {
-        await axios.delete(`http://localhost:3000/patients/${id}`);
+        await axios.delete(`http://localhost:3001/patients/${id}`);
         if (fetchPatients) fetchPatients();
         navigate('/patients');
       } catch (error) {
@@ -121,7 +121,7 @@ const PatientDetails = ({ fetchPatients }) => {
 
   const generatePrescription = async () => {
     try {
-      await axios.post(`http://localhost:3000/patients/${id}/prescription`, prescriptionData);
+      await axios.post(`http://localhost:3001/patients/${id}/prescription`, prescriptionData);
       alert('Prescription generated successfully!');
       navigate(`/patients/${id}/prescription`);
     } catch (error) {

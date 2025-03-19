@@ -3,7 +3,7 @@ const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || "4371056fabcb0502e5f9fdcb5e4ba943ee5a0d16a2bcbc55289e95448bfe58f8af5e1e43c0369095b01ddfb4a7";
+const JWT_SECRET = process.env.JWT_SECRET || "b2f8f5934a9d6e587d12d3a49d45a495c627a20e11fe7787d8b040fbf770d9cf6b3a48cd5512b4ed97fdee12fc850ad13caa8eb5c21090cc00f097e331e692cf";
 
 // Register a new user
 exports.registerUser = async (req, res) => {

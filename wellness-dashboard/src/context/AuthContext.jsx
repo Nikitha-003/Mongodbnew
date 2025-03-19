@@ -9,14 +9,14 @@ export const AuthProvider = ({ children }) => {
   const [userType, setUserType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null); // Add token state
+  const [token, setToken] = useState(null);
 
   // Clear auth state function
   const clearAuthState = () => {
     setIsAuthenticated(false);
     setUserType(null);
     setUser(null);
-    setToken(null); // Clear token state
+    setToken(null);
     delete axios.defaults.headers.common['Authorization'];
   };
 
@@ -30,12 +30,16 @@ export const AuthProvider = ({ children }) => {
         try {
           const user = JSON.parse(storedUser);
           setIsAuthenticated(true);
-          setUserType(user.userType);
+          setUserType(user.userType); // This is working correctly
           setUser(user);
           setToken(storedToken);
           
           // Set axios default header
           axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          
+          // Add this logging to debug token issues
+          console.log('Setting auth token:', `Bearer ${storedToken.substring(0, 15)}...`);
+          console.log('User type from localStorage:', user.userType); // Debug log
           
           logAuthState('AuthContext - Restored Auth', { 
             isAuthenticated: true, 
@@ -57,25 +61,29 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login function
-  const login = (userType, userData, authToken) => {
+  // Login function - FIX HERE
+  const login = (type, userData, authToken) => {
     try {
       // Store token and user data in localStorage
       localStorage.setItem('token', authToken);
       localStorage.setItem('user', JSON.stringify(userData));
       
-      // Update state
+      // Update state - FIX: Use the passed type parameter instead of userType state
       setIsAuthenticated(true);
-      setUserType(userType);
+      setUserType(type); // FIXED: Use the type parameter passed to the function
       setUser(userData);
       setToken(authToken);
       
+      // Debug log
+      console.log('Login: Setting user type to:', type);
+      
       // Set axios default header
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      console.log('Login: Setting auth token:', `Bearer ${authToken.substring(0, 15)}...`);
       
       logAuthState('AuthContext - Login', { 
         isAuthenticated: true, 
-        userType, 
+        userType: type, // FIXED: Use the type parameter
         user: userData, 
         token: authToken 
       });
@@ -90,12 +98,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     setUserType(null);
     setUser(null);
-    setToken(null); // Clear token state
+    setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('userType');
-    localStorage.removeItem('user'); // Added to remove user data
-    localStorage.removeItem('isAuthenticated'); // Added to remove authentication flag
-    // Remove authorization header
+    localStorage.removeItem('user');
+    localStorage.removeItem('isAuthenticated');
     delete axios.defaults.headers.common['Authorization'];
   };
 
@@ -105,7 +112,7 @@ export const AuthProvider = ({ children }) => {
       userType, 
       loading, 
       user,
-      token, // Expose token to components
+      token,
       login, 
       logout 
     }}>

@@ -4,11 +4,21 @@ const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const config = require('../config/config');
 
+// Ensure proper secret loading
+// Add this validation at the top of the file
+if (!process.env.JWT_SECRET && !config.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined in environment or config');
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || config.JWT_SECRET;
 
-// Authenticate JWT token
+// Add this debug log to verify secret is loading
+console.log('JWT Secret:', JWT_SECRET ? '*** loaded successfully ***' : 'MISSING!');
+
 exports.authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
+  // Add debug logging
+  console.log('Received auth header:', authHeader ? `${authHeader.substring(0,30)}...` : 'None');
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {

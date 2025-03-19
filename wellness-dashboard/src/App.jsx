@@ -13,7 +13,15 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ViewPrescription from "./components/ViewPrescription";
 import AddDoctor from './components/AddDoctor';
-import config from './config/config'; // Move the import here at the top level
+import config from './config/config';
+
+// Import new patient components
+import MyDetails from './components/patient/MyDetails';
+import BookAppointment from './components/patient/BookAppointment';
+import MedicalHistory from './components/patient/MedicalHistory';
+
+// Import new doctor component
+import AppointmentRequests from './components/doctor/AppointmentRequests';
 
 function App() {
   return (
@@ -26,17 +34,22 @@ function App() {
 }
 
 function AppContent() {
+  // Remove this duplicate loading declaration
+  // const { loading } = useAuth();
+
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { isAuthenticated, userType, loading } = useAuth();
-
-  console.log('AppContent - Auth State:', { isAuthenticated, userType, loading });
+  const { isAuthenticated, userType, loading, token } = useAuth(); // Keep this one
 
   const fetchPatients = async () => {
     try {
       // Use the config.API_URL for the API endpoint
-      const response = await axios.get(`${config.API_URL}/patients`);
+      const response = await axios.get(`${config.API_URL}/patients`, {
+        headers: {
+          Authorization: `Bearer ${token}` // Add authorization header
+        }
+      });
       setPatients(response.data);
       
       // Extract appointments from all patients
@@ -95,7 +108,7 @@ function AppContent() {
             isAuthenticated ? (
               userType === 'admin' ? <Navigate to="/admin" /> :
               userType === 'doctor' ? <Navigate to="/patients" /> :
-              <Navigate to="/appointments" />
+              <Navigate to="/my-details" /> // Changed from "/appointments" to "/my-details" for patients
             ) : <Navigate to="/login" />
           } />
           
@@ -110,6 +123,13 @@ function AppContent() {
           <Route path="/dashboard" element={
             <ProtectedRoute allowedUserTypes={['doctor']}>
               <Dashboard appointments={appointments} />
+            </ProtectedRoute>
+          } />
+          
+          {/* Add the new appointment requests route */}
+          <Route path="/appointment-requests" element={
+            <ProtectedRoute allowedUserTypes={['doctor']}>
+              <AppointmentRequests />
             </ProtectedRoute>
           } />
           
@@ -141,6 +161,25 @@ function AppContent() {
           <Route path="/appointments" element={
             <ProtectedRoute allowedUserTypes={['patient']}>
               <Dashboard appointments={appointments} isPatientView={true} />
+            </ProtectedRoute>
+          } />
+          
+          {/* New patient routes */}
+          <Route path="/my-details" element={
+            <ProtectedRoute allowedUserTypes={['patient']}>
+              <MyDetails />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/book-appointment" element={
+            <ProtectedRoute allowedUserTypes={['patient']}>
+              <BookAppointment />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/medical-history" element={
+            <ProtectedRoute allowedUserTypes={['patient']}>
+              <MedicalHistory />
             </ProtectedRoute>
           } />
           

@@ -16,11 +16,11 @@ const ViewPrescription = () => {
     const fetchData = async () => {
       try {
         // Fetch patient data
-        const patientResponse = await axios.get(`http://localhost:3000/patients/${id}`);
+        const patientResponse = await axios.get(`http://localhost:3001/patients/${id}`);
         setPatient(patientResponse.data);
         
         // Fetch prescription data
-        const prescriptionResponse = await axios.get(`http://localhost:3000/patients/${id}/prescription`);
+        const prescriptionResponse = await axios.get(`http://localhost:3001/patients/${id}/prescription`);
         setPrescription(prescriptionResponse.data);
         
         setLoading(false);

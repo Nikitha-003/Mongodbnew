@@ -19,6 +19,14 @@ const UserManagement = () => {
         console.log('Making request to:', `${config.API_URL}/admin/users`);
         console.log('With headers:', { Authorization: `Bearer ${token}` });
         
+        // Make sure token is included in the request
+        if (!token) {
+          console.error('No authentication token available');
+          setError('Authentication required');
+          setLoading(false);
+          return;
+        }
+        
         const response = await axios.get(`${config.API_URL}/admin/users`, {
           headers: {
             Authorization: `Bearer ${token}`
@@ -60,13 +68,11 @@ const UserManagement = () => {
         setLoading(false);
       }
     };
-    
+
     if (token) {
       fetchUsers();
-    } else {
-      setError('Authentication token missing. Please log in again.');
     }
-  }, [token]);
+  }, [token]); // Add token as a dependency
 
   return (
     <div className="p-6">

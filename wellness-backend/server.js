@@ -14,10 +14,24 @@ const patientRoutes = require('./routes/patientRoutes');
 
 const app = express();
 app.use(express.json({ limit: '50mb' })); // Increased limit for larger PDF files
+// Update the CORS configuration to handle multiple origins
 app.use(cors({
-  origin: config.CORS_ORIGIN,
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      ...(Array.isArray(config.CORS_ORIGIN) ? config.CORS_ORIGIN : [config.CORS_ORIGIN]),
+      'http://localhost:5173' // Add frontend origin
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'), false);
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Add this for authenticated requests
 }));
 
 // Add request logging middleware
@@ -159,7 +173,7 @@ db.once("open", () => console.log("✅ Connected to MongoDB Atlas"));
 
 // Start Server
 // Start the server with port fallback and error handling
-const PORT = process.env.PORT || config.PORT || 3000;
+const PORT = process.env.PORT || config.PORT || 3001;
 
 // Function to find an available port
 const startServer = (port) => {

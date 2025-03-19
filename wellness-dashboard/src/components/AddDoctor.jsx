@@ -27,7 +27,7 @@ const AddDoctor = () => {
     setSuccess('');
 
     try {
-      const response = await axios.post('http://localhost:3000/register', formData, {
+      const response = await axios.post('http://localhost:3001/register', formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }

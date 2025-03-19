@@ -207,7 +207,7 @@ const AddPatientForm = ({ onPatientAdded }) => {
       
       setTimeout(() => {
         setNotification({ show: false, message: "", type: "" });
-      }, 3000);
+      }, 3001);
       
       if (onPatientAdded) {
         onPatientAdded(response.data);
@@ -226,7 +226,7 @@ const AddPatientForm = ({ onPatientAdded }) => {
       
       setTimeout(() => {
         setNotification({ show: false, message: "", type: "" });
-      }, 3000);
+      }, 3001);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,36 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import config from '../config/config'; // Add this import
+import { useAuth } from '../context/AuthContext';
+import config from '../config/config';
 
-const Dashboard = () => {
-  const { user, token } = useAuth(); // Get token from auth context
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
+const Dashboard = ({ appointments: propAppointments, isPatientView = false }) => {
+  const [appointments, setAppointments] = useState(propAppointments || []);
+  const [loading, setLoading] = useState(!propAppointments);
+  const [error, setError] = useState(null);
+  const { user, token } = useAuth();
 
   useEffect(() => {
+    // If appointments are passed as props, use those
+    if (propAppointments) {
+      setAppointments(propAppointments);
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise fetch them
     const fetchAppointments = async () => {
       try {
-        // Replace hardcoded URL with config.API_URL
-        const response = await axios.get(`${config.API_URL}/appointments`, {
+        config.logApiRequest('/patients', 'GET');
+        
+        // Instead of fetching from /appointments, fetch from /patients
+        const response = await axios.get(`${config.API_URL}/patients`, {
           headers: {
-            Authorization: `Bearer ${token || localStorage.getItem('token')}`
+            Authorization: `Bearer ${token}`
           }
         });
         
-        // Initialize with an empty array if response.data is undefined
-        setAppointments(response.data || []);
+        // Extract appointments from all patients
+        const allAppointments = response.data.reduce((acc, patient) => {
+          if (patient.appointments && Array.isArray(patient.appointments)) {
+            const patientAppointments = patient.appointments.map(appointment => ({
+              id: appointment._id || `${patient._id}-${Math.random().toString(36).substr(2, 9)}`,
+              patientId: patient.patient_id,
+              patientName: patient.name,
+              ...appointment
+            }));
+            return [...acc, ...patientAppointments];
+          }
+          return acc;
+        }, []);
+        
+        setAppointments(allAppointments);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching appointments:', error);
-        // Set to empty array on error
-        setAppointments([]);
+        setError('Failed to load appointments. Please try again.');
         setLoading(false);
       }
     };
 
-    fetchAppointments();
-  }, [token]); // Add token to dependency array
+    if (token) {
+      fetchAppointments();
+    }
+  }, [propAppointments, token]);
 
   // Make sure appointments is an array before filtering
   const upcomingAppointments = Array.isArray(appointments) 

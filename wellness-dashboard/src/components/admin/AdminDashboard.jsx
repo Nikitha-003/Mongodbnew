@@ -9,7 +9,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { token } = useAuth();
+  const { token } = useAuth(); // Add this
   
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -18,17 +18,11 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchStats = async () => {
       try {
-        setLoading(true);
-        console.log('Fetching users with token:', token);
-        
-        // Replace
-        // const response = await axios.get('http://localhost:3000/admin/stats', {
-        // with
         const response = await axios.get(`${config.API_URL}/admin/stats`, {
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}` // Use context token
           }
         });
         
