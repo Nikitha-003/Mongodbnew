@@ -16,10 +16,35 @@ const app = express();
 app.use(express.json({ limit: '50mb' })); // Increased limit for larger PDF files
 // Update the CORS configuration to handle multiple origins
 app.use(cors({
+  // Update the CORS configuration to include the backend's own origin
   origin: function(origin, callback) {
     const allowedOrigins = [
       ...(Array.isArray(config.CORS_ORIGIN) ? config.CORS_ORIGIN : [config.CORS_ORIGIN]),
-      'http://localhost:5173' // Add frontend origin
+      'http://localhost:5173', // Frontend Vite default
+      'http://localhost:3001'  // Add backend's own origin
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'), false);
+    }
+  }, // Added missing comma here
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Add this for authenticated requests
+}));
+
+// Update the CORS configuration section with more permissive settings
+app.use(cors({
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      ...(Array.isArray(config.CORS_ORIGIN) ? config.CORS_ORIGIN : [config.CORS_ORIGIN]),
+      'http://localhost:5173',  // Frontend Vite default
+      'http://localhost:3001',  // Backend's own origin
+      'http://localhost:5174',  // From your config
+      undefined                 // Allow requests with no origin (like mobile apps or curl)
     ];
     
     if (!origin || allowedOrigins.includes(origin)) {
@@ -29,9 +54,9 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'), false);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true // Add this for authenticated requests
+  credentials: true,  // Allow cookies to be sent with requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Add request logging middleware
@@ -44,7 +69,13 @@ app.use((req, res, next) => {
 // Register routes - only register once
 app.use('/', authRoutes);
 app.use('/admin', adminRoutes);
-app.use('/patients', patientRoutes);
+app.use('/patients', patientRoutes);  // This should handle /patients requests
+
+// Add this import with your other route imports
+const doctorRoutes = require('./routes/doctorRoutes');
+
+// Then add this line with your other app.use statements
+app.use('/doctors', doctorRoutes);
 
 // Add a route to check API status
 app.get('/api/status', (req, res) => {
@@ -90,6 +121,7 @@ mongoose.connect(config.MONGO_URI || process.env.MONGODB_URI, {
   // Log the connection string (with password masked)
   const connectionString = (config.MONGO_URI || process.env.MONGODB_URI || '').replace(/:([^:@]+)@/, ':****@');
   console.log('Connected to:', connectionString);
+  console.log('Database name:', mongoose.connection.db.databaseName);
   
   // Test the connection by listing collections
   mongoose.connection.db.listCollections().toArray((err, collections) => {
@@ -97,6 +129,17 @@ mongoose.connect(config.MONGO_URI || process.env.MONGODB_URI, {
       console.error('Error listing collections:', err);
     } else {
       console.log('Available collections:', collections.map(c => c.name).join(', '));
+      
+      // Check all collections for doctor data
+      collections.forEach(collection => {
+        mongoose.connection.db.collection(collection.name).countDocuments((err, count) => {
+          if (err) {
+            console.error(`Error counting documents in ${collection.name}:`, err);
+          } else {
+            console.log(`Collection ${collection.name} contains ${count} documents`);
+          }
+        });
+      });
       
       // Check if users collection exists
       if (collections.some(c => c.name === 'users')) {
@@ -198,3 +241,31 @@ const startServer = (port) => {
 
 // Start the server
 startServer(PORT);
+
+// Add this test route after your existing test route
+app.get('/test/db', async (req, res) => {
+  try {
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(500).json({ 
+        message: 'Database not connected',
+        readyState: mongoose.connection.readyState
+      });
+    }
+    
+    // List collections to verify connection
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    
+    res.json({ 
+      message: 'Database connection test successful',
+      collections: collections.map(c => c.name),
+      dbName: mongoose.connection.db.databaseName
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({ 
+      message: 'Database test failed',
+      error: error.message
+    });
+  }
+});

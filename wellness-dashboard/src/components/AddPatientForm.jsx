@@ -179,54 +179,89 @@ const AddPatientForm = ({ onPatientAdded }) => {
 
   // Handle form submission
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
+    setIsSubmitting(true);
     
     try {
-      setIsSubmitting(true);
+      console.log("Submitting to:", `${config.API_URL}/patients`);
       
-      const patientToSubmit = {
+      // Make sure password is included for new patients
+      const completeData = {
         ...patientData,
+        // Add a default password for new patients (they can change it later)
+        password: patientData.password || patientData.phone || "defaultPassword123",
+        // Make sure userType is set
+        userType: "patient",
+        // Include prescriptions
         prescriptions: prescriptions
       };
       
-      const response = await axios.post(
-        `${config.API_URL}/patients`,
-        patientToSubmit,
-        {
-          headers: {
-            Authorization: `Bearer ${token || localStorage.getItem('token')}`
-          }
-        }
-      );
+      // Log the data being sent for debugging
+      console.log("Sending patient data:", JSON.stringify(completeData, null, 2));
       
+      const response = await axios.post(`${config.API_URL}/patients`, completeData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      console.log("Patient added successfully:", response.data);
       setNotification({
         show: true,
         message: "Patient added successfully!",
         type: "success"
       });
       
-      setTimeout(() => {
-        setNotification({ show: false, message: "", type: "" });
-      }, 3001);
+      // Reset form after successful submission
+      setPatientData({
+        patient_id: "",
+        name: "",
+        age: "",
+        gender: "",
+        phone: "",
+        email: "",
+        address: "",
+        blood_group: "",
+        medical_history: [{ condition: "", diagnosed_on: "" }],
+        appointments: [{ date: "", time: "10:00", doctor: "", department: "", status: "Pending" }],
+      });
+      setPrescriptions([{ medicine: "", dosage: "", frequency: "", duration: "", instructions: "" }]);
       
+      // Call the onPatientAdded callback if provided
       if (onPatientAdded) {
         onPatientAdded(response.data);
       }
       
-      navigate("/patients");
-      
+      // Navigate to patient list after a short delay
+      setTimeout(() => {
+        navigate("/patients");
+      }, 2000);
     } catch (error) {
       console.error("Error adding patient:", error);
+      console.error("Error response:", error.response?.data);
+      
+      // Show more detailed error message
+      let errorMessage = "Failed to add patient. ";
+      
+      if (error.response?.data?.errors) {
+        // Extract validation error details
+        const validationErrors = error.response.data.errors;
+        const errorDetails = Object.keys(validationErrors)
+          .map(field => `${field}: ${validationErrors[field].message}`)
+          .join(', ');
+        
+        errorMessage += `Validation errors: ${errorDetails}`;
+      } else if (error.response?.data?.message) {
+        errorMessage += error.response.data.message;
+      } else {
+        errorMessage += "Please check your input and try again.";
+      }
       
       setNotification({
         show: true,
-        message: "Failed to add patient. Please try again.",
+        message: errorMessage,
         type: "error"
       });
-      
-      setTimeout(() => {
-        setNotification({ show: false, message: "", type: "" });
-      }, 3001);
     } finally {
       setIsSubmitting(false);
     }

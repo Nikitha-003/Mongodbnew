@@ -24,7 +24,7 @@ const doctorSchema = new mongoose.Schema({
   },
   specialization: {
     type: String,
-    default: 'General Physician'
+    required: true // Make it required to ensure it's set during creation
   },
   experience: {
     type: Number,
@@ -46,13 +46,10 @@ const doctorSchema = new mongoose.Schema({
 
 // Hash password before saving
 doctorSchema.pre('save', async function(next) {
-  // Only hash the password if it's modified (or new)
   if (!this.isModified('password')) return next();
   
   try {
-    // Generate a salt
     const salt = await bcrypt.genSalt(10);
-    // Hash the password along with the new salt
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
@@ -60,7 +57,6 @@ doctorSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare passwords
 doctorSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

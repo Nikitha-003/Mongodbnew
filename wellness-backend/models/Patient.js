@@ -1,7 +1,34 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-// Define the prescription schema
+// Define the appointment schema first since it's used in the patient schema
+// Update the appointment schema to properly handle doctorId
+const appointmentSchema = new mongoose.Schema({
+  date: String,
+  time: String,
+  doctorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Doctor'
+  },
+  department: String,
+  reason: String,
+  status: {
+    type: String,
+    enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'scheduled', 'approved', 'rejected'],
+    default: 'Pending'
+  }
+});
+
+// Use a single prescription schema - renamed to avoid conflicts
+const medicationSchema = new mongoose.Schema({
+  medicine: String,
+  dosage: String,
+  frequency: String,
+  duration: String,
+  instructions: String
+}, { _id: false });
+
+// Define the full prescription schema
 const prescriptionSchema = new mongoose.Schema({
   date: {
     type: Date,
@@ -22,24 +49,7 @@ const prescriptionSchema = new mongoose.Schema({
   doctorName: String
 });
 
-// Define the appointment schema
-const appointmentSchema = new mongoose.Schema({
-  date: Date,
-  time: String,
-  reason: String,
-  status: {
-    type: String,
-    enum: ['scheduled', 'completed', 'cancelled'],
-    default: 'scheduled'
-  },
-  doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor'
-  },
-  doctorName: String,
-  notes: String
-});
-
+// Update your patient schema
 const patientSchema = new mongoose.Schema({
   patient_id: {
     type: String,
@@ -71,21 +81,28 @@ const patientSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ['male', 'female', 'other']
+    enum: ['Male', 'Female', 'Other']  // Updated to match your frontend values
   },
-  contactNumber: {
+  phone: {  // Added to match frontend field name
+    type: String
+  },
+  contactNumber: {  // Keep for backward compatibility
     type: String
   },
   address: {
     type: String
   },
-  medicalHistory: [{
+  blood_group: {  // Added to match frontend field
+    type: String
+  },
+  medical_history: [{  // Changed to match frontend field name
     condition: String,
-    diagnosedDate: Date,
-    notes: String
+    diagnosed_on: String  // Changed to match frontend field name
   }],
   appointments: [appointmentSchema],
+  // Add both types of prescriptions
   prescriptions: [prescriptionSchema],
+  medications: [medicationSchema],  // Add simple medications array
   createdAt: {
     type: Date,
     default: Date.now
@@ -113,6 +130,4 @@ patientSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-const Patient = mongoose.model("Patient", patientSchema, "patients");
-
-module.exports = Patient;
+module.exports = mongoose.model("Patient", patientSchema);

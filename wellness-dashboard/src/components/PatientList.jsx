@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import config from '../config/config'; // Make sure to import config
 
 const PatientList = ({ patients, setPatients }) => {
   const navigate = useNavigate();
@@ -16,64 +17,70 @@ const PatientList = ({ patients, setPatients }) => {
   const [patientDetails, setPatientDetails] = useState(null);
   // Add notification state
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
-
+  
+  // Add this memoized filtered patients calculation
+  const filteredPatients = useMemo(() => {
+    if (!patients) return [];
+    
+    return patients.filter(patient => 
+      patient.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.patient_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [patients, searchTerm]);
+  
   // Function to show notification
   const showNotification = useCallback((message, type = "success") => {
     setNotification({ show: true, message, type });
     // Auto-hide after 3 seconds
     setTimeout(() => {
       setNotification({ show: false, message: "", type: "" });
-    }, 3001);
+    }, 3000);
   }, []);
-
-  // Filter patients based on search term
-  const filteredPatients = useMemo(() => {
-    return patients
-      .filter((patient) => {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          patient.name?.toLowerCase().includes(searchLower) ||
-          patient.patient_id?.toLowerCase().includes(searchLower) ||
-          patient.phone?.toLowerCase().includes(searchLower) ||
-          patient.email?.toLowerCase().includes(searchLower) ||
-          patient.blood_group?.toLowerCase().includes(searchLower)
-        );
-      })
-      .sort((a, b) => a.patient_id?.localeCompare(b.patient_id));
-  }, [patients, searchTerm]);
-
+  
   // Optimized delete handler with useCallback
   const handleDelete = useCallback(async (id) => {
     try {
-      await axios.delete(`http://localhost:3001/patients/${id}`);
+      // Ensure the API URL is correct
+      await axios.delete(`${config.API_URL}/patients/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       setPatients((prevPatients) => prevPatients.filter((patient) => patient._id !== id));
       showNotification("Patient deleted successfully");
     } catch (error) {
       console.error("Error deleting patient:", error);
-      showNotification("Error deleting patient", "error");
+      showNotification("Failed to delete patient", "error");
     }
   }, [setPatients, showNotification]);
-
+  
   // Optimized edit handler with useCallback
   const handleEdit = useCallback((patient) => {
     setSelectedPatient({...patient});
     setIsModalOpen(true);
   }, []);
-
+  
   // Add the missing handleCloseModal function
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedPatient(null);
   }, []);
-
+  
   // Add handleUpdate function for the edit modal
   const handleUpdate = useCallback(async () => {
     try {
       if (!selectedPatient) return;
       
       const response = await axios.put(
-        `http://localhost:3001/patients/${selectedPatient._id}`, 
-        selectedPatient
+        `${config.API_URL}/patients/${selectedPatient._id}`, 
+        selectedPatient,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
       
       // Update the patients list
@@ -92,8 +99,8 @@ const PatientList = ({ patients, setPatients }) => {
       console.error("Error updating patient:", error);
       showNotification("Failed to update patient", "error");
     }
-  }, [selectedPatient, setPatients, showNotification]);
-
+  }, [selectedPatient, setPatients, showNotification, handleCloseModal]);
+  
   // Handle input changes in the edit modal
   const handleInputChange = useCallback((e, field) => {
     if (!selectedPatient) return;
@@ -103,7 +110,7 @@ const PatientList = ({ patients, setPatients }) => {
       [field]: e.target.value
     });
   }, [selectedPatient]);
-
+  
   // Optimized generatePrescription function
   const generatePrescription = useCallback(async (patient) => {
     try {
@@ -195,7 +202,15 @@ const PatientList = ({ patients, setPatients }) => {
       };
       
       // Save the updated patient to the database
-      await axios.put(`http://localhost:3001/patients/${patient._id}`, updatedPatient);
+      await axios.put(
+        `${config.API_URL}/patients/${patient._id}`, 
+        updatedPatient,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
       
       // Update the patients list with minimal re-rendering
       setPatients(prevPatients => 
@@ -228,31 +243,13 @@ const PatientList = ({ patients, setPatients }) => {
   };
 
   return (
-    <div className="container mx-auto px-4">
-      <h1 className="text-2xl font-bold mb-6">Patient Records</h1>
-      
-      {/* Notification component */}
+    <div className="container mx-auto px-4 py-8">
+      {/* Add notification display */}
       {notification.show && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-md shadow-md transition-all duration-300 ${
-          notification.type === "error" 
-            ? "bg-red-100 text-red-700 border-l-4 border-red-500" 
-            : "bg-green-100 text-green-700 border-l-4 border-green-500"
-        }`}>
-          <div className="flex items-center">
-            {notification.type === "error" ? (
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            )}
-            <p>{notification.message}</p>
-          </div>
+        <div className={`mb-4 p-3 rounded ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {notification.message}
         </div>
       )}
-      
       {/* Search Bar */}
       <div className="mb-6">
         <input

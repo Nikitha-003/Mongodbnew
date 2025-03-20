@@ -12,7 +12,7 @@ import Register from "./components/Register";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ViewPrescription from "./components/ViewPrescription";
-import AddDoctor from './components/AddDoctor';
+import AddDoctor from './components/admin/AddDoctor';
 import config from './config/config';
 
 // Import new patient components
@@ -70,6 +70,11 @@ function AppContent() {
     } catch (error) {
       console.error("Error fetching patients:", error);
     }
+  };
+
+  // New function to add a patient to the state
+  const addPatientToList = (newPatient) => {
+    setPatients((prevPatients) => [...prevPatients, newPatient]);
   };
 
   useEffect(() => {
@@ -141,7 +146,7 @@ function AppContent() {
           
           <Route path="/add-patient" element={
             <ProtectedRoute allowedUserTypes={['doctor']}>
-              <AddPatientForm setPatients={setPatients} />
+              <AddPatientForm onPatientAdded={addPatientToList} />
             </ProtectedRoute>
           } />
           
@@ -184,11 +189,14 @@ function AppContent() {
           } />
           
           {/* Add Doctor route */}
-          <Route path="/add-doctor" element={
-            <ProtectedRoute allowedUserTypes={['admin']}>
-              <AddDoctor />
-            </ProtectedRoute>
-          } />
+          <Route 
+            path="/add-doctor" 
+            element={
+              <ProtectedRoute allowedUserTypes={['admin']}>
+                <AddDoctor />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </div>
     </div>

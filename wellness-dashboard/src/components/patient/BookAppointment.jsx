@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+import config from '../../config/config';
 
 const BookAppointment = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [formData, setFormData] = useState({
     date: '',
     time: '09:00',
@@ -13,20 +15,106 @@ const BookAppointment = () => {
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Mock data for departments and doctors - will be replaced with API calls later
-  const departments = ['Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology'];
-  const doctors = [
-    { id: 1, name: 'Dr. John Smith', department: 'Cardiology' },
-    { id: 2, name: 'Dr. Sarah Johnson', department: 'Neurology' },
-    { id: 3, name: 'Dr. Michael Brown', department: 'Orthopedics' },
-    { id: 4, name: 'Dr. Emily Davis', department: 'Pediatrics' },
-    { id: 5, name: 'Dr. Robert Wilson', department: 'Dermatology' }
-  ];
+  // Replace mock data with state
+  const [doctors, setDoctors] = useState([]);
+  // Update this line - remove the default value
+  const [departments, setDepartments] = useState([]);
+  
+  // Add this useEffect to fetch departments
+  // Update the fetchDepartments function
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        // Use the dedicated endpoint for departments
+        const response = await axios.get(`${config.API_URL}/patients/doctors/departments`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        if (response.data && response.data.departments && response.data.departments.length > 0) {
+          setDepartments(response.data.departments);
+        } else {
+          // Fallback to common departments but NOT General Physician as default
+          setDepartments(['Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology']);
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+        // Fallback without General Physician as default
+        setDepartments(['Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology']);
+      }
+    };
+    
+    fetchDepartments();
+  }, [token]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch real doctors from the backend
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${config.API_URL}/doctors`, {
+          headers: {
+            Authorization: `Bearer ${token || localStorage.getItem('token')}`
+          }
+        });
+        
+        // Extract doctors and departments from response
+        const doctorData = response.data;
+        console.log('Fetched doctors:', doctorData);
+        
+        if (Array.isArray(doctorData) && doctorData.length > 0) {
+          // Log the structure of the first doctor to understand the data format
+          console.log('First doctor structure:', JSON.stringify(doctorData[0]));
+          setDoctors(doctorData);
+          
+          // Extract unique departments with better error handling
+          const departments = doctorData
+            .map(doc => doc.specialization) // Only use specialization field
+            .filter(Boolean);
+          const uniqueDepartments = [...new Set(departments)];
+          
+          console.log('Extracted departments:', uniqueDepartments);
+          setDepartments(uniqueDepartments.length > 0 ? uniqueDepartments : ['Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology']);
+        } else {
+          // Fallback to mock data if API returns empty array
+          setDoctors([
+            { _id: '1', name: 'Dr. John Smith', department: 'Cardiology' },
+            { _id: '2', name: 'Dr. Sarah Johnson', department: 'Neurology' },
+            { _id: '3', name: 'Dr. Michael Brown', department: 'Orthopedics' },
+            { _id: '4', name: 'Dr. Emily Davis', department: 'Pediatrics' },
+            { _id: '5', name: 'Dr. Robert Wilson', department: 'Dermatology' }
+          ]);
+          setDepartments(['Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology']);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching doctors:', error);
+        // Fallback to mock data if API fails
+        setDoctors([
+          { _id: '1', name: 'Dr. John Smith', department: 'Cardiology' },
+          { _id: '2', name: 'Dr. Sarah Johnson', department: 'Neurology' },
+          { _id: '3', name: 'Dr. Michael Brown', department: 'Orthopedics' },
+          { _id: '4', name: 'Dr. Emily Davis', department: 'Pediatrics' },
+          { _id: '5', name: 'Dr. Robert Wilson', department: 'Dermatology' }
+        ]);
+        setDepartments(['Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology']);
+        setLoading(false);
+      }
+    };
+    
+    fetchDoctors();
+  }, [token]);
 
   // Filter doctors based on selected department
   const filteredDoctors = formData.department 
-    ? doctors.filter(doctor => doctor.department === formData.department) 
+    ? doctors.filter(doctor => doctor.specialization === formData.department) 
     : [];
+  
+  console.log('Selected department:', formData.department);
+  console.log('Filtered doctors:', filteredDoctors);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -44,16 +132,26 @@ const BookAppointment = () => {
     }
   };
 
+  // Update the handleSubmit function
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      // This will be connected to backend later
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Connect to the backend API
+      const response = await axios.post(`${config.API_URL}/patients/appointments`, {
+        date: formData.date,
+        time: formData.time,
+        reason: formData.reason,
+        department: formData.department,
+        doctorId: formData.doctorId, // This should now be a valid MongoDB ID
+        status: 'Pending'
+      }, {
+        headers: {
+          Authorization: `Bearer ${token || localStorage.getItem('token')}`
+        }
+      });
       
-      // Show success notification
       setNotification({ 
         show: true, 
         message: 'Appointment booked successfully! You will receive a confirmation soon.', 
@@ -68,18 +166,21 @@ const BookAppointment = () => {
         department: '',
         doctorId: ''
       });
+      
+      setTimeout(() => {
+        setNotification({ show: false, message: '', type: '' });
+      }, 5000);
     } catch (error) {
+      console.error('Error booking appointment:', error);
+      // Show more detailed error message if available
+      const errorMessage = error.response?.data?.message || 'Failed to book appointment. Please try again.';
       setNotification({ 
         show: true, 
-        message: 'Failed to book appointment. Please try again.', 
+        message: errorMessage, 
         type: 'error' 
       });
     } finally {
       setIsSubmitting(false);
-      // Auto-hide notification after 5 seconds
-      setTimeout(() => {
-        setNotification({ show: false, message: '', type: '' });
-      }, 5000);
     }
   };
 
@@ -153,7 +254,9 @@ const BookAppointment = () => {
               >
                 <option value="">Select Doctor</option>
                 {filteredDoctors.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>{doctor.name}</option>
+                  <option key={doctor._id || doctor.id} value={doctor._id || doctor.id}>
+                    {doctor.name}
+                  </option>
                 ))}
               </select>
               {!formData.department && (

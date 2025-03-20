@@ -8,9 +8,9 @@ const JWT_SECRET = process.env.JWT_SECRET || "b2f8f5934a9d6e587d12d3a49d45a495c6
 // Register a new user
 exports.registerUser = async (req, res) => {
   try {
-    const { email, password, userType, name } = req.body;
+    const { email, password, userType, name, specialization } = req.body;
     
-    console.log('Attempting to register user:', { email, userType, name });
+    console.log('Attempting to register user:', { email, userType, name, specialization });
     
     // Validate required fields
     if (!email || !password || !userType || !name) {
@@ -39,12 +39,20 @@ exports.registerUser = async (req, res) => {
     let savedUser;
     
     if (userType === 'doctor') {
+      // Ensure specialization is set for doctors
+      if (!specialization) {
+        return res.status(400).json({ message: "Specialization is required for doctors" });
+      }
+      
       const doctor = new Doctor({
         email,
         password,
-        name
+        name,
+        specialization: specialization // Ensure specialization is set
       });
+      
       savedUser = await doctor.save();
+      console.log('Doctor created successfully:', savedUser.email);
     } else if (userType === 'patient') {
       // Get next patient ID
       const lastPatient = await Patient.findOne().sort({ patient_id: -1 });

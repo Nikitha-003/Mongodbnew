@@ -9,11 +9,13 @@ const UserManagement = () => {
   const [error, setError] = useState(null);
   const { token } = useAuth(); // Get token from auth context
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // Add department field to the form state
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     password: '',
-    userType: 'patient'
+    userType: 'patient',
+    department: '' // Add department field
   });
 
   useEffect(() => {
@@ -41,14 +43,35 @@ const UserManagement = () => {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${config.API_URL}/register`, newUser);
+      // Create userData object with proper mapping for doctor specialization
+      const userData = {
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password,
+        userType: newUser.userType
+      };
+      
+      // Add specialization field for doctors
+      if (newUser.userType === 'doctor' && newUser.department) {
+        userData.specialization = newUser.department;
+      }
+      
+      console.log('Sending user data:', userData); // Add this log to debug
+      
+      await axios.post(`${config.API_URL}/register`, userData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       fetchUsers();
       setIsAddModalOpen(false);
+      // When resetting the form
       setNewUser({
         name: '',
         email: '',
         password: '',
-        userType: 'patient'
+        userType: 'patient',
+        department: '' // Reset department field
       });
     } catch (err) {
       console.error('Error adding user:', err);
@@ -191,6 +214,30 @@ const UserManagement = () => {
                   <option value="patient">Patient</option>
                 </select>
               </div>
+              
+              {/* Add department field when user type is doctor */}
+              {newUser.userType === 'doctor' && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="department">
+                    Department/Specialization
+                  </label>
+                  <select
+                    id="department"
+                    value={newUser.department}
+                    onChange={(e) => setNewUser({...newUser, department: e.target.value})}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Orthopedics">Orthopedics</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Dermatology">Dermatology</option>
+                    <option value="General Physician">General Physician</option>
+                  </select>
+                </div>
+              )}
               
               <div className="flex items-center justify-end">
                 <button

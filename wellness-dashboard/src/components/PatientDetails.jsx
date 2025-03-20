@@ -28,7 +28,11 @@ const PatientDetails = ({ fetchPatients }) => {
   useEffect(() => {
     const fetchPatient = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/patients/${id}`);
+        const response = await axios.get(`${config.API_URL}/patients/${id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
         setPatient(response.data);
         setFormData(response.data);
         if (response.data.prescription) {
