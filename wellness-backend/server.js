@@ -11,6 +11,7 @@ const config = require('./config/config');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const patientRoutes = require('./routes/patientRoutes');
+const fhirRoutes = require('./routes/fhirRoutes');
 
 const app = express();
 app.use(express.json({ limit: '50mb' })); // Increased limit for larger PDF files
@@ -76,6 +77,7 @@ const doctorRoutes = require('./routes/doctorRoutes');
 
 // Then add this line with your other app.use statements
 app.use('/doctors', doctorRoutes);
+app.use('/fhir', fhirRoutes);
 
 // Add a route to check API status
 app.get('/api/status', (req, res) => {

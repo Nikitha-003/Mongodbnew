@@ -3,6 +3,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Sidebar = ({ isOpen, setIsOpen, userType }) => {
+  // Add debug logging
+  console.log('Sidebar rendering with userType:', userType);
+  
   const { loading } = useAuth();
 
   if (loading) {
@@ -19,8 +22,10 @@ const Sidebar = ({ isOpen, setIsOpen, userType }) => {
 
   // Define navigation items based on user type with SVG icons instead of Material Icons
   const getNavItems = () => {
+    let navItems = [];
+    
     if (userType === 'admin') {
-      return [
+      navItems = [
         { 
           path: "/admin", 
           label: "Dashboard", 
@@ -47,10 +52,20 @@ const Sidebar = ({ isOpen, setIsOpen, userType }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           )
+        },
+        // Add FHIR Dashboard navigation item
+        { 
+          path: "/fhir-dashboard", 
+          label: "FHIR Dashboard", 
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          )
         }
       ];
     } else if (userType === 'doctor') {
-      return [
+      navItems = [
         { 
           path: "/dashboard", 
           label: "Dashboard", 
@@ -77,7 +92,7 @@ const Sidebar = ({ isOpen, setIsOpen, userType }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           )
-        },  // Added the missing comma here
+        },
         // Add new appointment requests option
         { 
           path: "/appointment-requests", 
@@ -90,7 +105,7 @@ const Sidebar = ({ isOpen, setIsOpen, userType }) => {
         }
       ];
     } else if (userType === 'patient') {
-      return [
+      navItems = [
         // Removed Dashboard option for patients
         { 
           path: "/my-details", 
@@ -130,7 +145,10 @@ const Sidebar = ({ isOpen, setIsOpen, userType }) => {
         }
       ];
     }
-    return [];
+    
+    // Add debug logging for navigation items
+    console.log('Navigation items for user type:', userType, navItems);
+    return navItems;
   };
 
   const navItems = getNavItems();

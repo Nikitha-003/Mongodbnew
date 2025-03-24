@@ -14,6 +14,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ViewPrescription from "./components/ViewPrescription";
 import AddDoctor from './components/admin/AddDoctor';
 import config from './config/config';
+import FHIRDashboard from './components/FHIRDashboard';
 
 // Import new patient components
 import MyDetails from './components/patient/MyDetails';
@@ -22,6 +23,8 @@ import MedicalHistory from './components/patient/MedicalHistory';
 
 // Import new doctor component
 import AppointmentRequests from './components/doctor/AppointmentRequests';
+
+
 
 function App() {
   return (
@@ -194,6 +197,16 @@ function AppContent() {
             element={
               <ProtectedRoute allowedUserTypes={['admin']}>
                 <AddDoctor />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* FHIR Dashboard route */}
+          <Route 
+            path="/fhir-dashboard" 
+            element={
+              <ProtectedRoute>
+                <FHIRDashboard />
               </ProtectedRoute>
             } 
           />
