@@ -51,60 +51,17 @@ router.get('/appointment-requests', authenticateToken, authorizeDoctor, async (r
 // Approve an appointment
 router.put('/appointments/:id/approve', authenticateToken, authorizeDoctor, async (req, res) => {
   try {
-    const { patientId } = req.body;
     const appointmentId = req.params.id;
-    
-    console.log(`Approving appointment ${appointmentId} for patient ${patientId}`);
-    
-    // Find the patient with this appointment
-    const patient = await Patient.findOne({
-      'appointments._id': appointmentId
-    });
-    
+    const patient = await Patient.findOne({ 'appointments._id': appointmentId });
+
     if (!patient) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
-    
-    // Update the appointment status
-    const appointmentIndex = patient.appointments.findIndex(
-      appt => appt._id.toString() === appointmentId
-    );
-    
-    if (appointmentIndex === -1) {
-      return res.status(404).json({ message: 'Appointment not found' });
-    }
-    
-    patient.appointments[appointmentIndex].status = 'approved';
+
+    const appointment = patient.appointments.id(appointmentId);
+    appointment.status = 'Approved';
     await patient.save();
-    
-    // Also update the doctor's appointments
-    const doctor = await Doctor.findById(req.user.id);
-    if (doctor) {
-      if (!doctor.appointments) {
-        doctor.appointments = [];
-      }
-      
-      // Add this appointment to doctor's list if not already there
-      const existingIndex = doctor.appointments.findIndex(
-        appt => appt.patientId === patient._id.toString() && 
-               appt.appointmentId === appointmentId
-      );
-      
-      if (existingIndex === -1) {
-        doctor.appointments.push({
-          appointmentId: appointmentId,
-          patientId: patient._id,
-          patientName: patient.name,
-          date: patient.appointments[appointmentIndex].date,
-          time: patient.appointments[appointmentIndex].time,
-          reason: patient.appointments[appointmentIndex].reason,
-          status: 'approved'
-        });
-        
-        await doctor.save();
-      }
-    }
-    
+
     res.json({ message: 'Appointment approved successfully' });
   } catch (error) {
     console.error('Error approving appointment:', error);
@@ -115,32 +72,17 @@ router.put('/appointments/:id/approve', authenticateToken, authorizeDoctor, asyn
 // Reject an appointment
 router.put('/appointments/:id/reject', authenticateToken, authorizeDoctor, async (req, res) => {
   try {
-    const { patientId } = req.body;
     const appointmentId = req.params.id;
-    
-    console.log(`Rejecting appointment ${appointmentId} for patient ${patientId}`);
-    
-    // Find the patient with this appointment
-    const patient = await Patient.findOne({
-      'appointments._id': appointmentId
-    });
-    
+    const patient = await Patient.findOne({ 'appointments._id': appointmentId });
+
     if (!patient) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
-    
-    // Update the appointment status
-    const appointmentIndex = patient.appointments.findIndex(
-      appt => appt._id.toString() === appointmentId
-    );
-    
-    if (appointmentIndex === -1) {
-      return res.status(404).json({ message: 'Appointment not found' });
-    }
-    
-    patient.appointments[appointmentIndex].status = 'rejected';
+
+    const appointment = patient.appointments.id(appointmentId);
+    appointment.status = 'Rejected';
     await patient.save();
-    
+
     res.json({ message: 'Appointment rejected successfully' });
   } catch (error) {
     console.error('Error rejecting appointment:', error);
