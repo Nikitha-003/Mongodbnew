@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('../config/config');
 const FHIRPatient = require('../models/FHIRPatient');
 const FHIRObservation = require('../models/FHIRObservation');
+const Patient = require('../models/Patient'); // Add this to import your actual Patient model
 
 async function createSampleFHIRData() {
   try {
@@ -15,100 +16,83 @@ async function createSampleFHIRData() {
     
     console.log('Connected to MongoDB');
     
-    // Clear existing data
+    // Clear existing FHIR data
     await FHIRPatient.deleteMany({});
     await FHIRObservation.deleteMany({});
     
     console.log('Cleared existing FHIR data');
     
-    // Create sample patients
+    // Fetch actual patients from your database
+    const actualPatients = await Patient.find();
+    console.log(`Found ${actualPatients.length} actual patients to convert to FHIR format`);
+    
+    if (actualPatients.length === 0) {
+      console.log('No actual patients found. Please add patients to your system first.');
+      return;
+    }
+    
+    // Create FHIR patients from actual patients
     const patients = [];
     const patientIds = [];
     
-    // Sample patient data
-    const samplePatients = [
-      {
-        name: [{ family: 'Smith', given: ['John'] }],
-        gender: 'male',
-        birthDate: '1970-10-15'
-      },
-      {
-        name: [{ family: 'Johnson', given: ['Emily'] }],
-        gender: 'female',
-        birthDate: '1985-05-23'
-      },
-      {
-        name: [{ family: 'Williams', given: ['Robert'] }],
-        gender: 'male',
-        birthDate: '1962-12-10'
-      },
-      {
-        name: [{ family: 'Brown', given: ['Sarah'] }],
-        gender: 'female',
-        birthDate: '1990-08-30'
-      },
-      {
-        name: [{ family: 'Jones', given: ['Michael'] }],
-        gender: 'male',
-        birthDate: '1978-03-17'
-      },
-      {
-        name: [{ family: 'Garcia', given: ['Maria'] }],
-        gender: 'female',
-        birthDate: '1995-11-05'
-      },
-      {
-        name: [{ family: 'Miller', given: ['David'] }],
-        gender: 'male',
-        birthDate: '1982-07-22'
-      },
-      {
-        name: [{ family: 'Davis', given: ['Jennifer'] }],
-        gender: 'female',
-        birthDate: '1975-01-14'
-      }
-    ];
-    
-    // Create FHIR patients
-    for (const patientData of samplePatients) {
+    for (const actualPatient of actualPatients) {
       const patientId = uuidv4();
       patientIds.push(patientId);
       
+      // Extract name parts (assuming name is in format "First Last")
+      let given = ['Unknown'];
+      let family = 'Unknown';
+      
+      if (actualPatient.name) {
+        const nameParts = actualPatient.name.split(' ');
+        if (nameParts.length > 1) {
+          family = nameParts.pop(); // Last part is family name
+          given = nameParts; // Remaining parts are given names
+        } else {
+          // If only one name part, use it as given name
+          given = [actualPatient.name];
+        }
+      }
+      
+      // Create FHIR patient from actual patient data
       const fhirPatient = new FHIRPatient({
         resourceType: 'Patient',
         id: patientId,
         identifier: [
           {
             system: 'http://example.org/fhir/ids',
-            value: `patient-${patientId.substring(0, 8)}`
+            value: actualPatient.patient_id || `patient-${patientId.substring(0, 8)}`
           }
         ],
         active: true,
-        name: patientData.name,
-        gender: patientData.gender,
-        birthDate: patientData.birthDate,
+        name: [{ 
+          family: family,
+          given: given
+        }],
+        gender: actualPatient.gender?.toLowerCase() || 'unknown',
+        birthDate: calculateBirthDateFromAge(actualPatient.age),
         telecom: [
           {
             system: 'phone',
-            value: `555-${Math.floor(1000 + Math.random() * 9000)}`,
+            value: actualPatient.phone || `555-${Math.floor(1000 + Math.random() * 9000)}`,
             use: 'home'
           },
           {
             system: 'email',
-            value: `${patientData.name[0].given[0].toLowerCase()}.${patientData.name[0].family.toLowerCase()}@example.com`,
+            value: actualPatient.email || `${given[0].toLowerCase()}.${family.toLowerCase()}@example.com`,
             use: 'work'
           }
         ],
-        address: [
+        address: actualPatient.address ? [
           {
             use: 'home',
-            line: [`${Math.floor(100 + Math.random() * 9900)} Main St`],
+            line: [actualPatient.address],
             city: 'Anytown',
             state: 'CA',
             postalCode: `${Math.floor(10000 + Math.random() * 90000)}`,
             country: 'USA'
           }
-        ]
+        ] : []
       });
       
       patients.push(fhirPatient);
@@ -116,9 +100,9 @@ async function createSampleFHIRData() {
     
     // Save all patients
     await FHIRPatient.insertMany(patients);
-    console.log(`Created ${patients.length} FHIR patients`);
+    console.log(`Created ${patients.length} FHIR patients from actual patient data`);
     
-    // Create sample observations
+    // Create sample observations (similar to before)
     const observations = [];
     
     // Observation types
@@ -213,14 +197,29 @@ async function createSampleFHIRData() {
     await FHIRObservation.insertMany(observations);
     console.log(`Created ${observations.length} FHIR observations`);
     
-    console.log('Sample FHIR data creation complete!');
+    console.log('FHIR data creation from actual patients complete!');
   } catch (error) {
-    console.error('Error creating sample FHIR data:', error);
+    console.error('Error creating FHIR data:', error);
   } finally {
     // Close the connection
     await mongoose.connection.close();
     console.log('MongoDB connection closed');
   }
+}
+
+// Helper function to calculate birth date from age
+function calculateBirthDateFromAge(age) {
+  if (!age || isNaN(parseInt(age))) {
+    // Default to a random age between 20-80 if age is not provided
+    age = Math.floor(20 + Math.random() * 60);
+  }
+  
+  const today = new Date();
+  const birthYear = today.getFullYear() - parseInt(age);
+  const month = Math.floor(Math.random() * 12) + 1; // Random month 1-12
+  const day = Math.floor(Math.random() * 28) + 1; // Random day 1-28 (to avoid invalid dates)
+  
+  return `${birthYear}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 }
 
 // Run the function

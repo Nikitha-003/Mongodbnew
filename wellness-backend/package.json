@@ -8,7 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "node scripts/migrateUsers.js",
     "create-admin": "node scripts/createAdmin.js",
-    "check-routes": "node scripts/checkRoutes.js"
+    "check-routes": "node scripts/checkRoutes.js",
+    "create-fhir-data": "node scripts/createSampleFHIRData.js"
   },
   "keywords": [],
   "author": "",
