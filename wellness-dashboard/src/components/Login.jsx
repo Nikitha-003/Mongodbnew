@@ -32,6 +32,8 @@ const Login = () => {
       
       // For now, let's handle both API and fallback authentication
       try {
+        console.log(`Attempting to login with: ${email}, userType: ${userType}`);
+        
         // Update the URL to use config
         const response = await axios.post(`${config.API_URL}/login`, {
           email,
@@ -48,54 +50,30 @@ const Login = () => {
         if (user.userType === 'doctor') {
           navigate('/patients');
         } else if (user.userType === 'admin') {
-          navigate('/admin/dashboard'); // Add proper admin route
+          navigate('/admin/dashboard');
         } else {
-          navigate('/appointments'); // Default for patients
+          navigate('/appointments');
         }
       } catch (apiError) {
-        console.log('API login failed, trying fallback:', apiError);
+        console.error('API login failed:', apiError);
         
-        // Fallback to hardcoded credentials for testing
-        if (userType === 'doctor') {
-          if (email === 'doctor@example.com' && password === 'password') {
-            login('doctor');
-            navigate('/patients');
-          } else {
-            throw new Error('Invalid doctor credentials');
-          }
-        } else if (userType === 'patient') {
-          if (email === 'patient@example.com' && password === 'password' || 
-              email === 'blessyrinisha.mohanraj@gmail.com') {
-            login('patient');
-            navigate('/appointments');
-          } else {
-            throw new Error('Invalid patient credentials');
-          }
-        } // In the fallback admin authentication section (around line 73-78)
-        else if (userType === 'admin') {
-        // Modified this part to accept admin@wellness.com or any email with admin@
-        if (email === 'admin@example.com' && password === 'password' ||
-            email === 'admin@wellness.com' && password === 'password' ||
-            email.includes('admin@') && password === 'password') {
-        // Generate a mock token for fallback authentication
-        const mockToken = 'fallback-admin-token-' + Date.now();
-        // Pass userType, userData and token
-        login('admin', { id: 'admin-123', email, name: 'Admin User', userType: 'admin' }, mockToken);
-        navigate('/admin/dashboard');
+        if (apiError.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          setError(apiError.response.data.message || 'Login failed. Please check your credentials.');
+        } else if (apiError.request) {
+          // The request was made but no response was received
+          setError('No response from server. Please try again later.');
         } else {
-        throw new Error('Invalid admin credentials');
+          // Something happened in setting up the request that triggered an Error
+          setError('Error setting up request. Please try again.');
         }
-        } else {
-          throw new Error('Invalid user type');
-        }
+        
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError(
-        error.response?.data?.message || error.message || 
-        'Login failed. Please check your credentials and try again.'
-      );
-    } finally {
+      setError(error.message || 'An unexpected error occurred');
       setIsLoading(false);
     }
   };

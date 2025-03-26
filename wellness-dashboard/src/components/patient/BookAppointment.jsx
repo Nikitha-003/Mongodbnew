@@ -71,7 +71,7 @@ const BookAppointment = () => {
           
           // Extract unique departments with better error handling
           const departments = doctorData
-            .map(doc => doc.specialization) // Only use specialization field
+            .map(doc => doc.department) // Only use department field
             .filter(Boolean);
           const uniqueDepartments = [...new Set(departments)];
           
@@ -110,7 +110,7 @@ const BookAppointment = () => {
 
   // Filter doctors based on selected department
   const filteredDoctors = formData.department 
-    ? doctors.filter(doctor => doctor.specialization === formData.department) 
+    ? doctors.filter(doctor => doctor.department === formData.department) 
     : [];
   
   console.log('Selected department:', formData.department);
@@ -138,27 +138,22 @@ const BookAppointment = () => {
     setIsSubmitting(true);
     
     try {
-      // Connect to the backend API
-      const response = await axios.post(`${config.API_URL}/patients/appointments`, {
-        date: formData.date,
-        time: formData.time,
-        reason: formData.reason,
-        department: formData.department,
-        doctorId: formData.doctorId, // This should now be a valid MongoDB ID
-        status: 'Pending'
-      }, {
+      // Log the form data being submitted
+      console.log('Submitting appointment data:', formData);
+      
+      const response = await axios.post(`${config.API_URL}/patients/appointments`, formData, {
         headers: {
-          Authorization: `Bearer ${token || localStorage.getItem('token')}`
+          Authorization: `Bearer ${token}`
         }
       });
       
-      setNotification({ 
-        show: true, 
-        message: 'Appointment booked successfully! You will receive a confirmation soon.', 
-        type: 'success' 
+      setNotification({
+        show: true,
+        message: 'Appointment booked successfully! It is pending approval.',
+        type: 'success'
       });
       
-      // Reset form
+      // Reset form after successful submission
       setFormData({
         date: '',
         time: '09:00',
@@ -167,19 +162,14 @@ const BookAppointment = () => {
         doctorId: ''
       });
       
-      setTimeout(() => {
-        setNotification({ show: false, message: '', type: '' });
-      }, 5000);
+      setIsSubmitting(false);
     } catch (error) {
       console.error('Error booking appointment:', error);
-      // Show more detailed error message if available
-      const errorMessage = error.response?.data?.message || 'Failed to book appointment. Please try again.';
-      setNotification({ 
-        show: true, 
-        message: errorMessage, 
-        type: 'error' 
+      setNotification({
+        show: true,
+        message: error.response?.data?.message || 'Failed to book appointment. Please try again.',
+        type: 'error'
       });
-    } finally {
       setIsSubmitting(false);
     }
   };

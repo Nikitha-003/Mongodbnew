@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+import config from '../../config/config';
 
 const MyDetails = () => {
-  const { user } = useAuth();
+  const { user, token, updateUserData } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -31,10 +34,41 @@ const MyDetails = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // This will be connected to backend later
-    setIsEditing(false);
-    setNotification({ show: true, message: 'Profile updated successfully!', type: 'success' });
-    setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+    setIsSubmitting(true);
+    
+    try {
+      console.log('Sending profile update:', formData);
+      // Send updated profile data to backend
+      const response = await axios.put(
+        `${config.API_URL}/patients/profile`, 
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      // Update local user data in context
+      if (updateUserData) {
+        updateUserData(response.data);
+      }
+      
+      setIsEditing(false);
+      setNotification({ show: true, message: 'Profile updated successfully!', type: 'success' });
+      
+      // Hide notification after 3 seconds
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setNotification({ 
+        show: true, 
+        message: error.response?.data?.message || 'Failed to update profile. Please try again.', 
+        type: 'error' 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -158,9 +192,12 @@ const MyDetails = () => {
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+                disabled={isSubmitting}
+                className={`${
+                  isSubmitting ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'
+                } text-white px-4 py-2 rounded flex items-center`}
               >
-                Save Changes
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>

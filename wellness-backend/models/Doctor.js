@@ -22,7 +22,7 @@ const doctorSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  specialization: {
+  department: {
     type: String,
     required: true // Make it required to ensure it's set during creation
   },

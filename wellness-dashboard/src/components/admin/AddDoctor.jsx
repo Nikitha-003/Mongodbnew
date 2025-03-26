@@ -32,7 +32,7 @@ const AddDoctor = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        specialization: formData.department, // Ensure department is mapped to specialization
+        department: formData.department, // Ensure department is mapped to department
         userType: 'doctor'
       };
       
@@ -137,7 +137,7 @@ const AddDoctor = () => {
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="department">
-              Department/Specialization
+              Department/department
             </label>
             <select
               id="department"

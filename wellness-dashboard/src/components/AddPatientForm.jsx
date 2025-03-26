@@ -12,10 +12,11 @@ const AddPatientForm = ({ onPatientAdded }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
+  const [isSearching, setIsSearching] = useState(false);
 
   // Initial patient data state with only required sections
   const [patientData, setPatientData] = useState({
-    patient_id: "", // Will be auto-generated
+    patient_id: "",
     name: "",
     age: "",
     gender: "",
@@ -32,79 +33,78 @@ const AddPatientForm = ({ onPatientAdded }) => {
     { medicine: "", dosage: "", frequency: "", duration: "", instructions: "" }
   ]);
 
-  // Generate a unique patient ID
-  useEffect(() => {
-    const generatePatientId = async () => {
-      try {
-        setIsSubmitting(true);
-        
-        const response = await axios.get(`${config.API_URL}/patients`, {
-          headers: {
-            Authorization: `Bearer ${token || localStorage.getItem('token')}`
-          }
-        });
-        const patients = response.data;
-        
-        let highestNum = 0;
-        patients.forEach(patient => {
-          if (patient.patient_id) {
-            const idNum = parseInt(patient.patient_id.replace('PT', ''), 10);
-            if (!isNaN(idNum) && idNum > highestNum) {
-              highestNum = idNum;
-            }
-          }
-        });
-        
-        const newId = `PT${(highestNum + 1).toString().padStart(4, '0')}`;
-        
-        setPatientData(prevData => ({
-          ...prevData,
-          patient_id: newId
-        }));
-      } catch (error) {
-        console.error("Error generating patient ID:", error);
-        const randomId = `PT${Math.floor(1000 + Math.random() * 9000)}`;
-        setPatientData(prevData => ({
-          ...prevData,
-          patient_id: randomId
-        }));
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
-  
-    generatePatientId();
-  }, [token]);
+  // Function to search for a patient by ID
+  const searchPatient = async () => {
+    if (!patientData.patient_id) {
+      setNotification({
+        show: true,
+        message: "Please enter a patient ID to search",
+        type: "error"
+      });
+      return;
+    }
 
-  // Handle form input changes
-  const handleInputChange = (e, field) => {
-    setPatientData({
-      ...patientData,
-      [field]: e.target.value,
-    });
+    try {
+      setIsSearching(true);
+      const response = await axios.get(`${config.API_URL}/patients/search/${patientData.patient_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.data) {
+        // Auto-fill the form with patient details
+        setPatientData({
+          ...response.data,
+          medical_history: response.data.medical_history && response.data.medical_history.length > 0 
+            ? response.data.medical_history 
+            : [{ condition: "", diagnosed_on: "" }],
+          appointments: response.data.appointments && response.data.appointments.length > 0
+            ? response.data.appointments
+            : [{ date: "", time: "10:00", doctor: "", department: "", status: "Pending" }]
+        });
+
+        // Set prescriptions if they exist
+        if (response.data.prescriptions && response.data.prescriptions.length > 0) {
+          setPrescriptions(response.data.prescriptions);
+        }
+
+        setNotification({
+          show: true,
+          message: "Patient found! Form has been filled with their details.",
+          type: "success"
+        });
+      }
+    } catch (error) {
+      console.error("Error searching for patient:", error);
+      setNotification({
+        show: true,
+        message: error.response?.data?.message || "Patient not found. Please check the ID.",
+        type: "error"
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle input changes for patient data
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setPatientData({ ...patientData, [name]: value });
   };
 
   // Handle medical history changes
   const handleMedicalHistoryChange = (index, field, value) => {
     const updatedHistory = [...patientData.medical_history];
-    updatedHistory[index] = {
-      ...updatedHistory[index],
-      [field]: value,
-    };
-    setPatientData({
-      ...patientData,
-      medical_history: updatedHistory,
-    });
+    updatedHistory[index] = { ...updatedHistory[index], [field]: value };
+    setPatientData({ ...patientData, medical_history: updatedHistory });
   };
 
   // Add more medical history fields
   const addMedicalHistory = () => {
     setPatientData({
       ...patientData,
-      medical_history: [
-        ...patientData.medical_history,
-        { condition: "", diagnosed_on: "" },
-      ],
+      medical_history: [...patientData.medical_history, { condition: "", diagnosed_on: "" }]
     });
   };
 
@@ -112,62 +112,19 @@ const AddPatientForm = ({ onPatientAdded }) => {
   const removeMedicalHistory = (index) => {
     const updatedHistory = [...patientData.medical_history];
     updatedHistory.splice(index, 1);
-    setPatientData({
-      ...patientData,
-      medical_history: updatedHistory,
-    });
-  };
-
-  // Handle appointment changes
-  const handleAppointmentChange = (index, field, value) => {
-    const updatedAppointments = [...patientData.appointments];
-    updatedAppointments[index] = {
-      ...updatedAppointments[index],
-      [field]: value,
-    };
-    setPatientData({
-      ...patientData,
-      appointments: updatedAppointments,
-    });
-  };
-
-  // Add more appointment fields
-  const addAppointment = () => {
-    setPatientData({
-      ...patientData,
-      appointments: [
-        ...patientData.appointments,
-        { date: "", time: "10:00", doctor: "", department: "", status: "Pending" },
-      ],
-    });
-  };
-
-  // Remove appointment field
-  const removeAppointment = (index) => {
-    const updatedAppointments = [...patientData.appointments];
-    updatedAppointments.splice(index, 1);
-    setPatientData({
-      ...patientData,
-      appointments: updatedAppointments,
-    });
+    setPatientData({ ...patientData, medical_history: updatedHistory });
   };
 
   // Handle prescription changes
   const handlePrescriptionChange = (index, field, value) => {
     const updatedPrescriptions = [...prescriptions];
-    updatedPrescriptions[index] = {
-      ...updatedPrescriptions[index],
-      [field]: value,
-    };
+    updatedPrescriptions[index] = { ...updatedPrescriptions[index], [field]: value };
     setPrescriptions(updatedPrescriptions);
   };
 
   // Add more prescription fields
   const addPrescription = () => {
-    setPrescriptions([
-      ...prescriptions,
-      { medicine: "", dosage: "", frequency: "", duration: "", instructions: "" }
-    ]);
+    setPrescriptions([...prescriptions, { medicine: "", dosage: "", frequency: "", duration: "", instructions: "" }]);
   };
 
   // Remove prescription field
@@ -177,89 +134,93 @@ const AddPatientForm = ({ onPatientAdded }) => {
     setPrescriptions(updatedPrescriptions);
   };
 
+  // Handle appointment changes
+  const handleAppointmentChange = (index, field, value) => {
+    const updatedAppointments = [...patientData.appointments];
+    updatedAppointments[index] = { ...updatedAppointments[index], [field]: value };
+    setPatientData({ ...patientData, appointments: updatedAppointments });
+  };
+
+  // Add more appointment fields
+  const addAppointment = () => {
+    setPatientData({
+      ...patientData,
+      appointments: [...patientData.appointments, { date: "", time: "10:00", doctor: "", department: "", status: "Pending" }]
+    });
+  };
+
+  // Remove appointment field
+  const removeAppointment = (index) => {
+    const updatedAppointments = [...patientData.appointments];
+    updatedAppointments.splice(index, 1);
+    setPatientData({ ...patientData, appointments: updatedAppointments });
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      console.log("Submitting to:", `${config.API_URL}/patients`);
-      
-      // Make sure password is included for new patients
-      const completeData = {
+      // Prepare the data to send
+      const patientToUpdate = {
         ...patientData,
-        // Add a default password for new patients (they can change it later)
-        password: patientData.password || patientData.phone || "defaultPassword123",
-        // Make sure userType is set
-        userType: "patient",
-        // Include prescriptions
         prescriptions: prescriptions
       };
       
-      // Log the data being sent for debugging
-      console.log("Sending patient data:", JSON.stringify(completeData, null, 2));
-      
-      const response = await axios.post(`${config.API_URL}/patients`, completeData, {
-        headers: {
-          Authorization: `Bearer ${token}`
+      // If we have an existing patient (after search), update them
+      if (patientData._id) {
+        const response = await axios.put(
+          `${config.API_URL}/patients/${patientData._id}`, 
+          patientToUpdate,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        
+        setNotification({
+          show: true,
+          message: "Patient updated successfully!",
+          type: "success"
+        });
+        
+        if (onPatientAdded) {
+          onPatientAdded(response.data);
         }
-      });
-      
-      console.log("Patient added successfully:", response.data);
-      setNotification({
-        show: true,
-        message: "Patient added successfully!",
-        type: "success"
-      });
-      
-      // Reset form after successful submission
-      setPatientData({
-        patient_id: "",
-        name: "",
-        age: "",
-        gender: "",
-        phone: "",
-        email: "",
-        address: "",
-        blood_group: "",
-        medical_history: [{ condition: "", diagnosed_on: "" }],
-        appointments: [{ date: "", time: "10:00", doctor: "", department: "", status: "Pending" }],
-      });
-      setPrescriptions([{ medicine: "", dosage: "", frequency: "", duration: "", instructions: "" }]);
-      
-      // Call the onPatientAdded callback if provided
-      if (onPatientAdded) {
-        onPatientAdded(response.data);
+      } else {
+        // Otherwise create a new patient
+        const response = await axios.post(
+          `${config.API_URL}/patients`, 
+          patientToUpdate,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        
+        setNotification({
+          show: true,
+          message: "Patient added successfully!",
+          type: "success"
+        });
+        
+        if (onPatientAdded) {
+          onPatientAdded(response.data);
+        }
       }
       
-      // Navigate to patient list after a short delay
+      // Reset form after successful submission
       setTimeout(() => {
         navigate("/patients");
       }, 2000);
     } catch (error) {
-      console.error("Error adding patient:", error);
-      console.error("Error response:", error.response?.data);
-      
-      // Show more detailed error message
-      let errorMessage = "Failed to add patient. ";
-      
-      if (error.response?.data?.errors) {
-        // Extract validation error details
-        const validationErrors = error.response.data.errors;
-        const errorDetails = Object.keys(validationErrors)
-          .map(field => `${field}: ${validationErrors[field].message}`)
-          .join(', ');
-        
-        errorMessage += `Validation errors: ${errorDetails}`;
-      } else if (error.response?.data?.message) {
-        errorMessage += error.response.data.message;
-      } else {
-        errorMessage += "Please check your input and try again.";
-      }
-      
+      console.error("Error adding/updating patient:", error);
       setNotification({
         show: true,
-        message: errorMessage,
+        message: error.response?.data?.message || "Error adding patient. Please try again.",
         type: "error"
       });
     } finally {
@@ -268,127 +229,195 @@ const AddPatientForm = ({ onPatientAdded }) => {
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
+    <div className="container mx-auto p-4">
+      <h2 className="text-2xl font-bold mb-4">Add New Patient</h2>
+      
       {notification.show && (
-        <div className={`mb-4 p-3 rounded ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div className={`p-4 mb-4 rounded-md ${notification.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
           {notification.message}
         </div>
       )}
       
-      <h2 className="text-2xl font-semibold mb-6 text-blue-800">Add New Patient</h2>
-      
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Patient ID</label>
-            <input
-              type="text"
-              value={patientData.patient_id}
-              disabled
-              className="w-full px-4 py-2 border rounded-md bg-gray-100"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Full Name</label>
-            <input
-              type="text"
-              value={patientData.name}
-              onChange={(e) => handleInputChange(e, "name")}
-              className="w-full px-4 py-2 border rounded-md"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Age</label>
-            <input
-              type="number"
-              value={patientData.age}
-              onChange={(e) => handleInputChange(e, "age")}
-              className="w-full px-4 py-2 border rounded-md"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Gender</label>
-            <select
-              value={patientData.gender}
-              onChange={(e) => handleInputChange(e, "gender")}
-              className="w-full px-4 py-2 border rounded-md"
-              required
+        {/* Patient ID Search Section */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Patient ID
+              </label>
+              <input
+                type="text"
+                name="patient_id"
+                value={patientData.patient_id}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                placeholder="Enter patient ID to search"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={searchPatient}
+              disabled={isSearching}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
             >
-              <option value="">Select Gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
+              {isSearching ? "Searching..." : "Search"}
+            </button>
           </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Phone</label>
-            <input
-              type="tel"
-              value={patientData.phone}
-              onChange={(e) => handleInputChange(e, "phone")}
-              className="w-full px-4 py-2 border rounded-md"
-            />
+          <p className="text-sm text-gray-500 mt-1">
+            Enter an existing patient ID to auto-fill the form, or leave blank to create a new patient.
+          </p>
+        </div>
+        
+        {/* Basic Information Section - Read-only after search */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={patientData.name}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                readOnly={!!patientData._id}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Age
+              </label>
+              <input
+                type="number"
+                name="age"
+                value={patientData.age}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                readOnly={!!patientData._id}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Gender
+              </label>
+              <select
+                name="gender"
+                value={patientData.gender}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                disabled={!!patientData._id}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone
+              </label>
+              <input
+                type="text"
+                name="phone"
+                value={patientData.phone}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                readOnly={!!patientData._id}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={patientData.email}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                readOnly={!!patientData._id}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Blood Group
+              </label>
+              <select
+                name="blood_group"
+                value={patientData.blood_group}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                disabled={!!patientData._id}
+              >
+                <option value="">Select Blood Group</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+              </select>
+            </div>
           </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Email</label>
-            <input
-              type="email"
-              value={patientData.email}
-              onChange={(e) => handleInputChange(e, "email")}
-              className="w-full px-4 py-2 border rounded-md"
-            />
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className="block text-gray-700 font-medium mb-2">Address</label>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address
+            </label>
             <textarea
+              name="address"
               value={patientData.address}
-              onChange={(e) => handleInputChange(e, "address")}
-              className="w-full px-4 py-2 border rounded-md"
-              rows="2"
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded-md"
+              rows="3"
+              readOnly={!!patientData._id}
             ></textarea>
           </div>
         </div>
         
-        {/* Medical History Section */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-3 text-blue-700">Medical History</h3>
+        {/* Medical History Section - Always editable */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-semibold mb-4">Medical History</h3>
           {patientData.medical_history.map((history, index) => (
-            <div key={index} className="flex flex-wrap mb-3 items-end">
-              <div className="w-full md:w-1/2 pr-2 mb-2 md:mb-0">
-                <label className="block text-gray-700 text-sm mb-1">Condition</label>
-                <input
-                  type="text"
-                  value={history.condition}
-                  onChange={(e) => handleMedicalHistoryChange(index, "condition", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              </div>
-              <div className="w-full md:w-1/3 pr-2 mb-2 md:mb-0">
-                <label className="block text-gray-700 text-sm mb-1">Diagnosed On</label>
-                <input
-                  type="date"
-                  value={history.diagnosed_on}
-                  onChange={(e) => handleMedicalHistoryChange(index, "diagnosed_on", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              </div>
-              <div className="w-full md:w-auto">
+            <div key={index} className="mb-4 p-3 border rounded-md bg-white">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-medium">Condition {index + 1}</h4>
                 <button
                   type="button"
                   onClick={() => removeMedicalHistory(index)}
-                  className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                  disabled={patientData.medical_history.length === 1}
+                  className="text-red-500 hover:text-red-700"
                 >
                   Remove
                 </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Condition
+                  </label>
+                  <input
+                    type="text"
+                    value={history.condition}
+                    onChange={(e) => handleMedicalHistoryChange(index, "condition", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Diagnosed On
+                  </label>
+                  <input
+                    type="date"
+                    value={history.diagnosed_on}
+                    onChange={(e) => handleMedicalHistoryChange(index, "diagnosed_on", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
               </div>
             </div>
           ))}
@@ -401,131 +430,77 @@ const AddPatientForm = ({ onPatientAdded }) => {
           </button>
         </div>
         
-        {/* Appointments Section - Added back */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-3 text-blue-700">Appointments</h3>
-          {patientData.appointments.map((appointment, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3 items-end bg-gray-50 p-3 rounded-md">
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Date</label>
-                <input
-                  type="date"
-                  value={appointment.date}
-                  onChange={(e) => handleAppointmentChange(index, "date", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Time</label>
-                <input
-                  type="time"
-                  value={appointment.time}
-                  onChange={(e) => handleAppointmentChange(index, "time", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Doctor</label>
-                <input
-                  type="text"
-                  value={appointment.doctor}
-                  onChange={(e) => handleAppointmentChange(index, "doctor", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Department</label>
-                <input
-                  type="text"
-                  value={appointment.department}
-                  onChange={(e) => handleAppointmentChange(index, "department", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={() => removeAppointment(index)}
-                  className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                  disabled={patientData.appointments.length === 1}
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addAppointment}
-            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          >
-            Add Appointment
-          </button>
-        </div>
-        
-        {/* Prescription Section */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-3 text-blue-700">Prescriptions</h3>
+        {/* Prescriptions Section - Always editable */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-semibold mb-4">Prescriptions</h3>
           {prescriptions.map((prescription, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3 items-end bg-gray-50 p-3 rounded-md">
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Medicine</label>
-                <input
-                  type="text"
-                  value={prescription.medicine}
-                  onChange={(e) => handlePrescriptionChange(index, "medicine", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Dosage</label>
-                <input
-                  type="text"
-                  value={prescription.dosage}
-                  onChange={(e) => handlePrescriptionChange(index, "dosage", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="e.g., 500mg"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Frequency</label>
-                <input
-                  type="text"
-                  value={prescription.frequency}
-                  onChange={(e) => handlePrescriptionChange(index, "frequency", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="e.g., Twice daily"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm mb-1">Duration</label>
-                <input
-                  type="text"
-                  value={prescription.duration}
-                  onChange={(e) => handlePrescriptionChange(index, "duration", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="e.g., 7 days"
-                />
-              </div>
-              <div className="flex items-end">
+            <div key={index} className="mb-4 p-3 border rounded-md bg-white">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-medium">Prescription {index + 1}</h4>
                 <button
                   type="button"
                   onClick={() => removePrescription(index)}
-                  className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                  disabled={prescriptions.length === 1}
+                  className="text-red-500 hover:text-red-700"
                 >
                   Remove
                 </button>
               </div>
-              <div className="md:col-span-5">
-                <label className="block text-gray-700 text-sm mb-1">Instructions</label>
-                <textarea
-                  value={prescription.instructions}
-                  onChange={(e) => handlePrescriptionChange(index, "instructions", e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  rows="2"
-                  placeholder="Special instructions for this medication"
-                ></textarea>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Medicine
+                  </label>
+                  <input
+                    type="text"
+                    value={prescription.medicine}
+                    onChange={(e) => handlePrescriptionChange(index, "medicine", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Dosage
+                  </label>
+                  <input
+                    type="text"
+                    value={prescription.dosage}
+                    onChange={(e) => handlePrescriptionChange(index, "dosage", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Frequency
+                  </label>
+                  <input
+                    type="text"
+                    value={prescription.frequency}
+                    onChange={(e) => handlePrescriptionChange(index, "frequency", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Duration
+                  </label>
+                  <input
+                    type="text"
+                    value={prescription.duration}
+                    onChange={(e) => handlePrescriptionChange(index, "duration", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Instructions
+                  </label>
+                  <textarea
+                    value={prescription.instructions}
+                    onChange={(e) => handlePrescriptionChange(index, "instructions", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                    rows="2"
+                  ></textarea>
+                </div>
               </div>
             </div>
           ))}
@@ -538,30 +513,108 @@ const AddPatientForm = ({ onPatientAdded }) => {
           </button>
         </div>
         
-        <div className="flex justify-end mt-6">
+        {/* Appointments Section - Always editable */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-semibold mb-4">Appointments</h3>
+          {patientData.appointments.map((appointment, index) => (
+            <div key={index} className="mb-4 p-3 border rounded-md bg-white">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-medium">Appointment {index + 1}</h4>
+                <button
+                  type="button"
+                  onClick={() => removeAppointment(index)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={appointment.date}
+                    onChange={(e) => handleAppointmentChange(index, "date", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Time
+                  </label>
+                  <input
+                    type="time"
+                    value={appointment.time}
+                    onChange={(e) => handleAppointmentChange(index, "time", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Doctor
+                  </label>
+                  <input
+                    type="text"
+                    value={appointment.doctor}
+                    onChange={(e) => handleAppointmentChange(index, "doctor", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={appointment.department}
+                    onChange={(e) => handleAppointmentChange(index, "department", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={appointment.status}
+                    onChange={(e) => handleAppointmentChange(index, "status", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="approved">Approved</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addAppointment}
+            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Add Appointment
+          </button>
+        </div>
+        
+        <div className="flex justify-end gap-4">
           <button
             type="button"
             onClick={() => navigate("/patients")}
-            className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 mr-2"
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
             disabled={isSubmitting}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
           >
-            {isSubmitting ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Saving...
-              </span>
-            ) : (
-              "Save Patient"
-            )}
+            {isSubmitting ? "Saving..." : patientData._id ? "Update Patient" : "Add Patient"}
           </button>
         </div>
       </form>

@@ -1,16 +1,16 @@
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
-const jwt = require('jsonwebtoken');
-
 const JWT_SECRET = process.env.JWT_SECRET || "b2f8f5934a9d6e587d12d3a49d45a495c627a20e11fe7787d8b040fbf770d9cf6b3a48cd5512b4ed97fdee12fc850ad13caa8eb5c21090cc00f097e331e692cf";
 
 // Register a new user
 exports.registerUser = async (req, res) => {
   try {
-    const { email, password, userType, name, specialization } = req.body;
+    const { email, password, userType, name, department } = req.body;
     
-    console.log('Attempting to register user:', { email, userType, name, specialization });
+    console.log('Attempting to register user:', { email, userType, name, department });
     
     // Validate required fields
     if (!email || !password || !userType || !name) {
@@ -39,16 +39,16 @@ exports.registerUser = async (req, res) => {
     let savedUser;
     
     if (userType === 'doctor') {
-      // Ensure specialization is set for doctors
-      if (!specialization) {
-        return res.status(400).json({ message: "Specialization is required for doctors" });
+      // Ensure department is set for doctors
+      if (!department) {
+        return res.status(400).json({ message: "department is required for doctors" });
       }
       
       const doctor = new Doctor({
         email,
         password,
         name,
-        specialization: specialization // Ensure specialization is set
+        department: department // Ensure department is set
       });
       
       savedUser = await doctor.save();
@@ -105,60 +105,58 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password, userType } = req.body;
     
-    console.log('Login attempt:', { email, userType });
+    console.log(`Login attempt for email: ${email}, userType: ${userType}`);
     
-    // Find user by email and userType in the appropriate collection
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please provide email and password' });
+    }
+    
     let user = null;
     
+    // Find user based on userType
     if (userType === 'doctor') {
       user = await Doctor.findOne({ email });
     } else if (userType === 'patient') {
       user = await Patient.findOne({ email });
     } else if (userType === 'admin') {
-      user = await User.findOne({ email });
-    } else {
-      return res.status(400).json({ message: "Invalid user type" });
+      user = await User.findOne({ email, userType: 'admin' });
     }
     
     if (!user) {
-      console.log('User not found:', email);
-      return res.status(401).json({ message: "Invalid credentials" });
+      console.log(`No ${userType} found with email: ${email}`);
+      return res.status(401).json({ message: `Invalid ${userType} credentials` });
     }
     
-    // Check password
+    // Compare password
     const isMatch = await user.comparePassword(password);
+    
     if (!isMatch) {
-      console.log('Password mismatch for user:', email);
-      return res.status(401).json({ message: "Invalid credentials" });
+      console.log(`Password mismatch for ${email}`);
+      return res.status(401).json({ message: `Invalid ${userType} credentials` });
     }
     
-    // Generate JWT token with all necessary user information
+    // Create JWT token
     const token = jwt.sign(
-      { 
-        id: user._id, 
-        email: user.email, 
-        userType: user.userType, 
-        name: user.name 
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' } // Extend token expiration to 24 hours
+      { id: user._id, userType: user.userType },
+      process.env.JWT_SECRET || 'your_jwt_secret',
+      { expiresIn: '1d' }
     );
     
-    console.log('Login successful for:', email, 'userType:', user.userType);
+    console.log(`Login successful for ${email}`);
     
+    // Return user info and token
     res.json({
       token,
       user: {
         id: user._id,
+        name: user.name,
         email: user.email,
-        userType: user.userType,
-        name: user.name
+        userType: user.userType
       }
     });
-    
   } catch (error) {
-    console.error('Error logging in:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
   }
 };
 

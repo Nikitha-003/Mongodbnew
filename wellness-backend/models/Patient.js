@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
 // Define the appointment schema first since it's used in the patient schema
-// Update the appointment schema to properly handle doctorId
 const appointmentSchema = new mongoose.Schema({
   date: String,
   time: String,
@@ -10,12 +9,16 @@ const appointmentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Doctor'
   },
-  department: String,
+  doctorName: String, // Add this field if it doesn't exist
+  department: {
+    type: String,
+    default: 'General'
+  },
   reason: String,
   status: {
     type: String,
-    enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'scheduled', 'approved', 'rejected'],
-    default: 'Pending'
+    enum: ['scheduled', 'approved', 'rejected', 'completed', 'cancelled', 'Pending'],
+    default: 'scheduled'
   }
 });
 
@@ -127,7 +130,14 @@ patientSchema.pre('save', async function(next) {
 
 // Method to compare passwords
 patientSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  try {
+    // Use bcrypt.compare to check if the provided password matches the stored hash
+    const isMatch = await bcrypt.compare(candidatePassword, this.password);
+    return isMatch;
+  } catch (error) {
+    console.error('Error comparing passwords:', error);
+    throw error;
+  }
 };
 
 module.exports = mongoose.model("Patient", patientSchema);

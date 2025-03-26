@@ -43,7 +43,7 @@ const UserManagement = () => {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      // Create userData object with proper mapping for doctor specialization
+      // Create userData object with proper mapping for doctor department
       const userData = {
         name: newUser.name,
         email: newUser.email,
@@ -51,9 +51,9 @@ const UserManagement = () => {
         userType: newUser.userType
       };
       
-      // Add specialization field for doctors
+      // Add department field for doctors
       if (newUser.userType === 'doctor' && newUser.department) {
-        userData.specialization = newUser.department;
+        userData.department = newUser.department;
       }
       
       console.log('Sending user data:', userData); // Add this log to debug
@@ -219,7 +219,7 @@ const UserManagement = () => {
               {newUser.userType === 'doctor' && (
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="department">
-                    Department/Specialization
+                    Department/department
                   </label>
                   <select
                     id="department"
