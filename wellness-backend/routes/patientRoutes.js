@@ -94,20 +94,26 @@ router.get('/appointments', authenticateToken, async (req, res) => {
   }
 });
 
-// Get patient's appointments (alternative route)
+// Get appointments for the logged-in patient
 router.get('/my-appointments', authenticateToken, async (req, res) => {
   try {
-    // Find the patient
+    console.log(`Fetching appointments for patient ID: ${req.user.id}`);
+    
+    // Find the patient by user ID
     const patient = await Patient.findById(req.user.id);
     
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found' });
     }
     
-    res.json(patient.appointments);
+    // Return only the current patient's appointments
+    const patientAppointments = patient.appointments || [];
+    console.log(`Found ${patientAppointments.length} appointments for patient ${patient.name}`);
+    
+    res.json(patientAppointments);
   } catch (error) {
     console.error('Error fetching patient appointments:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

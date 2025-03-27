@@ -186,4 +186,32 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get patients for the logged-in doctor only
+router.get('/my-patients', authenticateToken, authorizeDoctor, async (req, res) => {
+  try {
+    console.log(`Fetching patients for doctor ID: ${req.user.id}`);
+    
+    // Find all patients with appointments for this specific doctor
+    const patients = await Patient.find({
+      'appointments.doctorId': req.user.id
+    }).select('-password');
+    
+    console.log(`Found ${patients.length} patients for doctor ID: ${req.user.id}`);
+    
+    // For each patient, filter their appointments to only include ones with this doctor
+    const filteredPatients = patients.map(patient => {
+      const patientObj = patient.toObject();
+      patientObj.appointments = patientObj.appointments.filter(
+        appointment => appointment.doctorId && appointment.doctorId.toString() === req.user.id
+      );
+      return patientObj;
+    });
+    
+    res.json(filteredPatients);
+  } catch (error) {
+    console.error('Error fetching doctor patients:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

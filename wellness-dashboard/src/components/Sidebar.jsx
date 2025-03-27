@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -6,7 +6,15 @@ const Sidebar = ({ isOpen, setIsOpen, userType }) => {
   // Add debug logging
   console.log('Sidebar rendering with userType:', userType);
   
-  const { loading } = useAuth();
+  const { loading, user } = useAuth(); // Add user to destructuring
+
+  // Debug logging for user object
+  useEffect(() => {
+    if (user) {
+      console.log('User in sidebar:', user);
+      console.log('Department in user object:', user.department);
+    }
+  }, [user]);
 
   if (loading) {
     return null; // Or return a loading spinner
@@ -155,86 +163,66 @@ const Sidebar = ({ isOpen, setIsOpen, userType }) => {
 
   return (
     <div
-      className={`fixed inset-y-0 left-0 z-30 bg-blue-50 text-blue-800 transition-all duration-300 border-r border-blue-100 ${
-        isOpen ? "w-64" : "w-20"
-      }`}
-    >
-      <div className="flex items-center justify-between h-16 px-4 border-b border-blue-100">
-        {isOpen ? (
-          <h1 className="text-xl font-bold">Wellness Portal</h1>
-        ) : (
-          <h1 className="text-xl font-bold">WP</h1>
-        )}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="p-1 rounded-full hover:bg-blue-100"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {isOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15 19l-7-7 7-7"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M9 5l7 7-7 7"
-              />
+      className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform ${isOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out md:translate-x-0`}>
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div>
+            <h1 className="text-xl font-bold text-blue-800">Wellness Portal</h1>
+            {/* Display name for all user types */}
+            {user && (
+              <div>
+                <p className="text-sm text-blue-600 mt-1">
+                  {userType === 'doctor' ? 'Dr. ' : ''}{user.name}
+                </p>
+                {/* {userType === 'doctor' && (
+                  <p className="text-xs text-gray-600 italic">
+                    {user.department || 'Department not available'}
+                  </p>
+                )} */}
+              </div>
             )}
-          </svg>
-        </button>
-      </div>
+          </div>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="p-1 rounded-md hover:bg-gray-200 md:hidden"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-      <nav className="mt-5 px-2">
-        <ul className="space-y-2">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <Link
-                to={item.path}
-                className={`flex items-center p-2 rounded-lg ${
-                  location.pathname === item.path
-                    ? "bg-blue-100 text-blue-800 font-medium"
-                    : "text-blue-700 hover:bg-blue-100"
-                } ${!isOpen ? "justify-center" : ""}`}
-              >
-                {item.icon}
-                {isOpen && <span className="ml-3">{item.label}</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div className="absolute bottom-0 w-full p-4">
-            <button
-              onClick={handleLogout}
-              className={`flex items-center p-2 rounded-lg text-blue-700 hover:bg-blue-100 w-full ${
-                !isOpen ? "justify-center" : ""
-              }`}
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-              {isOpen && <span className="ml-3">Logout</span>}
-            </button>
+        <nav className="flex-1 overflow-y-auto">
+          <ul className="p-2">
+            {navItems.map((item, index) => (
+              <li key={index} className="mb-1">
+                <Link
+                  to={item.path}
+                  className={`flex items-center px-4 py-2 text-gray-700 rounded-md ${
+                    location.pathname === item.path
+                      ? "bg-blue-100 text-blue-700"
+                      : "hover:bg-gray-100"
+                  }`}
+                >
+                  <span className="mr-3">{item.icon}</span>
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className="flex items-center w-full px-4 py-2 text-gray-700 rounded-md hover:bg-gray-100"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   );

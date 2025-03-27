@@ -24,6 +24,39 @@ const MyDetails = () => {
     }
   }, [user]);
 
+  // Add a function to fetch user data from the server
+  const fetchUserData = async () => {
+    try {
+      const response = await axios.get(`${config.API_URL}/patients/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (response.data) {
+        setFormData(response.data);
+        // Update the user data in context if available
+        if (updateUserData) {
+          updateUserData(response.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      setNotification({
+        show: true,
+        message: 'Failed to load your profile data. Please refresh the page.',
+        type: 'error'
+      });
+    }
+  };
+
+  // Call fetchUserData when component mounts
+  useEffect(() => {
+    if (token) {
+      fetchUserData();
+    }
+  }, [token]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -48,6 +81,9 @@ const MyDetails = () => {
           }
         }
       );
+      
+      // Store the updated data in localStorage for persistence
+      localStorage.setItem('userData', JSON.stringify(response.data));
       
       // Update local user data in context
       if (updateUserData) {

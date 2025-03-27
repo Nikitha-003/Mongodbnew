@@ -138,10 +138,10 @@ button[class*="add-more"]:hover,
 }
 
 /* Hamburger menu button */
-.bg-[#f0f7ff] {
+.bg-custom {
   background-color: #e6f3ff !important;
 }
 
-.hover\:bg-[#e1effe]:hover {
+.hover\:bg-custom:hover {
   background-color: #d1e9ff !important;
 }

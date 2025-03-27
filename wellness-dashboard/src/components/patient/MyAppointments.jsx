@@ -13,11 +13,16 @@ const MyAppointments = () => {
     const fetchAppointments = async () => {
       try {
         setLoading(true);
+        console.log('Fetching appointments for current patient');
+        
+        // Use the my-appointments endpoint that only returns the current patient's appointments
         const response = await axios.get(`${config.API_URL}/patients/my-appointments`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
+        
+        console.log('Received appointments:', response.data);
         setAppointments(response.data);
         setLoading(false);
       } catch (err) {
@@ -42,7 +47,7 @@ const MyAppointments = () => {
   // Helper function to get status badge class
   const getStatusBadgeClass = (status) => {
     switch (status?.toLowerCase()) {
-      case 'Approve':
+      case 'approved':
         return 'bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium';
       case 'rejected':
         return 'bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium';
@@ -53,70 +58,81 @@ const MyAppointments = () => {
     }
   };
 
-  // Add a debug function to help troubleshoot
-  const logAppointmentData = (appointment) => {
-    console.log('Appointment data:', {
-      id: appointment._id,
-      date: appointment.date,
-      time: appointment.time,
-      department: appointment.department,
-      reason: appointment.reason,
-      status: appointment.status
-    });
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
-        <h1 className="text-3xl font-bold text-blue-800">My Appointments</h1>
-        <p className="text-gray-600 mb-6">View your scheduled appointments</p>
+        <h1 className="text-3xl font-bold text-blue-800">My Upcoming Appointments</h1>
+        <p className="text-gray-600 mb-6">View and manage your scheduled appointments</p>
 
         {loading ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Loading appointments...</p>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         ) : error ? (
           <div className="text-center py-8">
             <p className="text-red-500">{error}</p>
           </div>
         ) : appointments.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">You don't have any appointments scheduled.</p>
+          <div className="text-center py-8 bg-gray-50 rounded-lg">
+            <p className="text-gray-500">No upcoming appointments found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white rounded-lg overflow-hidden">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Patient
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Time
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Department
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Doctor Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reason
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {appointments.map((appointment) => (
                   <tr key={appointment._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="font-medium text-gray-900">
+                        {user?.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        ID: {user?.patient_id}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(appointment.date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {appointment.time || 'N/A'}
+                      {appointment.time || "N/A"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {appointment.department || 'Department not specified'}
+                      {appointment.department || "General"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {appointment.doctorName || 'Not assigned'}
+                      {appointment.doctorName || "Not assigned"}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {appointment.reason || 'No reason provided'}
+                      {appointment.reason || "No reason provided"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={getStatusBadgeClass(appointment.status)}>
-                        {appointment.status || 'Pending'}
+                        {appointment.status || "Pending"}
                       </span>
                     </td>
                   </tr>

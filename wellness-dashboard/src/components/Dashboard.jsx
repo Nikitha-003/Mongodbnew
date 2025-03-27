@@ -23,8 +23,8 @@ const Dashboard = ({ appointments: propAppointments, isPatientView = false }) =>
         let response;
         
         if (userType === 'doctor') {
-          // Fetch doctor's approved appointments
-          response = await axios.get(`${config.API_URL}/doctors/appointments`, {
+          // Fetch doctor's appointments - this endpoint should return only appointments for this doctor
+          response = await axios.get(`${config.API_URL}/doctors/my-appointments`, {
             headers: {
               Authorization: `Bearer ${token}`
             }
@@ -42,7 +42,8 @@ const Dashboard = ({ appointments: propAppointments, isPatientView = false }) =>
         let appointmentsData = [];
         if (userType === 'doctor') {
           // For doctors, use the appointments directly from the response
-          appointmentsData = response.data.filter(appt => appt.status === 'Approve');
+          // The filtering is now done on the server side
+          appointmentsData = response.data;
         } else {
           // For admin view, extract appointments from all patients
           response.data.forEach(patient => {
@@ -56,7 +57,8 @@ const Dashboard = ({ appointments: propAppointments, isPatientView = false }) =>
                   time: appt.time,
                   reason: appt.reason,
                   status: appt.status,
-                  department: appt.department
+                  department: appt.department,
+                  doctorName: appt.doctorName
                 });
               });
             }
@@ -178,7 +180,7 @@ const Dashboard = ({ appointments: propAppointments, isPatientView = false }) =>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {appointments.map((appointment) => (
+                {upcomingAppointments.map((appointment) => (
                   <tr key={appointment.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">

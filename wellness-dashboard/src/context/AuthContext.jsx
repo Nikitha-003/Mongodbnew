@@ -22,27 +22,44 @@ export const AuthProvider = ({ children }) => {
 
   // Check authentication status on component mount
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
+      const storedUserData = localStorage.getItem('userData');
       
-      if (storedToken && storedUser) {
+      if (storedToken) {
         try {
-          const user = JSON.parse(storedUser);
-          setIsAuthenticated(true);
-          setUserType(user.userType);
-          setUser(user);
-          setToken(storedToken);
+          let userData;
           
-          // Set axios default header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          // Try to get user data from either 'user' or 'userData' in localStorage
+          if (storedUser) {
+            userData = JSON.parse(storedUser);
+          } else if (storedUserData) {
+            userData = JSON.parse(storedUserData);
+          }
           
-          logAuthState('AuthContext - Restored Auth', { 
-            isAuthenticated: true, 
-            userType: user.userType, 
-            user, 
-            token: storedToken 
-          });
+          if (userData) {
+            setIsAuthenticated(true);
+            setUserType(userData.userType);
+            setUser(userData);
+            setToken(storedToken);
+            
+            // Set axios default header
+            axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+            
+            // Add this logging to debug token issues
+            console.log('Setting auth token:', `Bearer ${storedToken.substring(0, 15)}...`);
+            console.log('User type from localStorage:', userData.userType);
+            
+            logAuthState('AuthContext - Restored Auth', { 
+              isAuthenticated: true, 
+              userType: userData.userType, 
+              user: userData, 
+              token: storedToken 
+            });
+          } else {
+            clearAuthState();
+          }
         } catch (error) {
           console.error('Error parsing stored user:', error);
           clearAuthState();
@@ -57,12 +74,13 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login function
+  // Login function - Combined and fixed
   const login = (type, userData, authToken) => {
     try {
       // Store token and user data in localStorage
       localStorage.setItem('token', authToken);
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('userData', JSON.stringify(userData));
       
       // Update state
       setIsAuthenticated(true);
@@ -70,12 +88,16 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       setToken(authToken);
       
+      // Debug log
+      console.log('Login: Setting user type to:', type);
+      
       // Set axios default header
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      console.log('Login: Setting auth token:', `Bearer ${authToken.substring(0, 15)}...`);
       
       logAuthState('AuthContext - Login', { 
         isAuthenticated: true, 
-        userType: type, 
+        userType: type,
         user: userData, 
         token: authToken 
       });
@@ -84,30 +106,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Logout function
   const logout = () => {
-    console.log('AuthContext - Logout');
-    
-    setIsAuthenticated(false);
-    setUserType(null);
-    setUser(null);
-    setToken(null);
+    // Remove auth-related items
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Note: We're not removing userData from localStorage
+    // This allows the data to persist between sessions
+    
+    // Reset auth state
+    setToken(null);
+    setUserType(null);
+    setIsAuthenticated(false);
+    setUser(null);
+    
+    // Clear axios headers
     delete axios.defaults.headers.common['Authorization'];
   };
-
-  // Update user data function
-  const updateUserData = (updatedUserData) => {
-    setUser(prevUser => ({
-      ...prevUser,
-      ...updatedUserData
-    }));
-    
-    // Update localStorage with the new user data
-    if (updatedUserData) {
-      const updatedUser = { ...user, ...updatedUserData };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-    }
+  
+  // Add a function to update user data
+  const updateUserData = (newUserData) => {
+    localStorage.setItem('userData', JSON.stringify(newUserData));
+    localStorage.setItem('user', JSON.stringify(newUserData)); // Update both storage keys
+    setUser(newUserData);
   };
 
   return (

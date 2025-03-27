@@ -23,6 +23,7 @@ import MedicalHistory from './components/patient/MedicalHistory';
 
 // Import new doctor component
 import AppointmentRequests from './components/doctor/AppointmentRequests';
+import MyAppointments from './components/patient/MyAppointments';
 
 
 
@@ -47,10 +48,14 @@ function AppContent() {
 
   const fetchPatients = async () => {
     try {
-      // Use the config.API_URL for the API endpoint
-      const response = await axios.get(`${config.API_URL}/patients`, {
+      // Use different endpoints based on user type
+      const endpoint = userType === 'doctor' 
+        ? `${config.API_URL}/doctors/my-patients` 
+        : `${config.API_URL}/patients`;
+      
+      const response = await axios.get(endpoint, {
         headers: {
-          Authorization: `Bearer ${token}` // Add authorization header
+          Authorization: `Bearer ${token}`
         }
       });
       setPatients(response.data);
@@ -60,7 +65,7 @@ function AppContent() {
         if (patient.appointments && Array.isArray(patient.appointments)) {
           const patientAppointments = patient.appointments.map(appointment => ({
             id: appointment._id || `${patient._id}-${Math.random().toString(36).substr(2, 9)}`,
-            patientId: patient.patient_id,  // Make sure this is included
+            patientId: patient.patient_id,
             patientName: patient.name,
             ...appointment
           }));
@@ -71,7 +76,7 @@ function AppContent() {
       
       setAppointments(allAppointments);
     } catch (error) {
-      console.error("Error fetching patients:", error);
+      console.error('Error fetching patients:', error);
     }
   };
 
@@ -165,12 +170,15 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
+          // In your route definition for MyAppointments, make sure you're not passing all appointments:
+          
           {/* Patient routes */}
-          <Route path="/appointments" element={
-            <ProtectedRoute allowedUserTypes={['patient']}>
-              <Dashboard appointments={appointments} isPatientView={true} />
-            </ProtectedRoute>
-          } />
+          {isAuthenticated && userType === 'patient' && (
+            <>
+              <Route path="/appointments" element={<MyAppointments />} /> {/* Don't pass any props here */}
+              {/* Other patient routes */}
+            </>
+          )}
           
           {/* New patient routes */}
           <Route path="/my-details" element={
