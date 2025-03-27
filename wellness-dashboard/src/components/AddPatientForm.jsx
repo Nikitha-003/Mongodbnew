@@ -25,7 +25,7 @@ const AddPatientForm = ({ onPatientAdded }) => {
     address: "",
     blood_group: "",
     medical_history: [{ condition: "", diagnosed_on: "" }],
-    appointments: [{ date: "", time: "10:00", doctor: "", department: "", status: "Pending" }],
+    // appointments: [{ date: "", time: "10:00", doctor: "", department: "", status: "Pending" }],
   });
 
   // Add prescription state
@@ -120,6 +120,10 @@ const AddPatientForm = ({ onPatientAdded }) => {
     const updatedPrescriptions = [...prescriptions];
     updatedPrescriptions[index] = { ...updatedPrescriptions[index], [field]: value };
     setPrescriptions(updatedPrescriptions);
+    
+    // Log the updated prescription for debugging
+    console.log(`Updated prescription ${index}, field: ${field}, value: ${value}`);
+    console.log('Current prescriptions state:', updatedPrescriptions);
   };
 
   // Add more prescription fields
@@ -129,32 +133,33 @@ const AddPatientForm = ({ onPatientAdded }) => {
 
   // Remove prescription field
   const removePrescription = (index) => {
-    const updatedPrescriptions = [...prescriptions];
-    updatedPrescriptions.splice(index, 1);
+    const updatedPrescriptions = prescriptions.filter((_, i) => i !== index);
     setPrescriptions(updatedPrescriptions);
   };
+  
+  
 
   // Handle appointment changes
-  const handleAppointmentChange = (index, field, value) => {
-    const updatedAppointments = [...patientData.appointments];
-    updatedAppointments[index] = { ...updatedAppointments[index], [field]: value };
-    setPatientData({ ...patientData, appointments: updatedAppointments });
-  };
+  // const handleAppointmentChange = (index, field, value) => {
+  //   const updatedAppointments = [...patientData.appointments];
+  //   updatedAppointments[index] = { ...updatedAppointments[index], [field]: value };
+  //   setPatientData({ ...patientData, appointments: updatedAppointments });
+  // };
 
   // Add more appointment fields
-  const addAppointment = () => {
-    setPatientData({
-      ...patientData,
-      appointments: [...patientData.appointments, { date: "", time: "10:00", doctor: "", department: "", status: "Pending" }]
-    });
-  };
+  // const addAppointment = () => {
+  //   setPatientData({
+  //     ...patientData,
+  //     appointments: [...patientData.appointments, { date: "", time: "10:00", doctor: "", department: "", status: "Pending" }]
+  //   });
+  // };
 
   // Remove appointment field
-  const removeAppointment = (index) => {
-    const updatedAppointments = [...patientData.appointments];
-    updatedAppointments.splice(index, 1);
-    setPatientData({ ...patientData, appointments: updatedAppointments });
-  };
+  // const removeAppointment = (index) => {
+  //   const updatedAppointments = [...patientData.appointments];
+  //   updatedAppointments.splice(index, 1);
+  //   setPatientData({ ...patientData, appointments: updatedAppointments });
+  // };
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -162,17 +167,28 @@ const AddPatientForm = ({ onPatientAdded }) => {
     setIsSubmitting(true);
     
     try {
-      // Prepare the data to send
-      const patientToUpdate = {
+      // Validate prescriptions data
+      const validPrescriptions = prescriptions.filter(p => 
+        p.medicine.trim() !== '' || p.dosage.trim() !== '' || 
+        p.frequency.trim() !== '' || p.duration.trim() !== '' || 
+        p.instructions.trim() !== ''
+      );
+      
+      // Create a complete patient data object that includes prescriptions
+      const completePatientData = {
         ...patientData,
-        prescriptions: prescriptions
+        prescriptions: validPrescriptions
       };
       
-      // If we have an existing patient (after search), update them
+      console.log('Submitting patient data with prescriptions:', completePatientData);
+      
+      let response;
+      
       if (patientData._id) {
-        const response = await axios.put(
+        // Update existing patient
+        response = await axios.put(
           `${config.API_URL}/patients/${patientData._id}`, 
-          patientToUpdate,
+          completePatientData,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -185,15 +201,11 @@ const AddPatientForm = ({ onPatientAdded }) => {
           message: "Patient updated successfully!",
           type: "success"
         });
-        
-        if (onPatientAdded) {
-          onPatientAdded(response.data);
-        }
       } else {
-        // Otherwise create a new patient
-        const response = await axios.post(
+        // Create new patient
+        response = await axios.post(
           `${config.API_URL}/patients`, 
-          patientToUpdate,
+          completePatientData,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -206,21 +218,26 @@ const AddPatientForm = ({ onPatientAdded }) => {
           message: "Patient added successfully!",
           type: "success"
         });
-        
-        if (onPatientAdded) {
-          onPatientAdded(response.data);
-        }
       }
       
-      // Reset form after successful submission
+      console.log('Server response:', response.data);
+      
+      // If onPatientAdded callback exists, call it
+      if (onPatientAdded) {
+        onPatientAdded(response.data);
+      }
+      
+      // Reset form or navigate away after short delay
       setTimeout(() => {
         navigate("/patients");
       }, 2000);
+      
     } catch (error) {
-      console.error("Error adding/updating patient:", error);
+      console.error("Error saving patient:", error);
+      
       setNotification({
         show: true,
-        message: error.response?.data?.message || "Error adding patient. Please try again.",
+        message: error.response?.data?.message || "Failed to save patient. Please try again.",
         type: "error"
       });
     } finally {
@@ -490,17 +507,17 @@ const AddPatientForm = ({ onPatientAdded }) => {
                     className="w-full p-2 border rounded-md"
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Instructions
-                  </label>
-                  <textarea
-                    value={prescription.instructions}
-                    onChange={(e) => handlePrescriptionChange(index, "instructions", e.target.value)}
-                    className="w-full p-2 border rounded-md"
-                    rows="2"
-                  ></textarea>
-                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Instructions
+                </label>
+                <textarea
+                  value={prescription.instructions}
+                  onChange={(e) => handlePrescriptionChange(index, "instructions", e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  rows="2"
+                ></textarea>
               </div>
             </div>
           ))}
@@ -513,7 +530,7 @@ const AddPatientForm = ({ onPatientAdded }) => {
           </button>
         </div>
         
-        {/* Appointments Section - Always editable */}
+        {/* Appointments Section - Always editable
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
           <h3 className="text-lg font-semibold mb-4">Appointments</h3>
           {patientData.appointments.map((appointment, index) => (
@@ -599,7 +616,7 @@ const AddPatientForm = ({ onPatientAdded }) => {
           >
             Add Appointment
           </button>
-        </div>
+        </div> */}
         
         <div className="flex justify-end gap-4">
           <button

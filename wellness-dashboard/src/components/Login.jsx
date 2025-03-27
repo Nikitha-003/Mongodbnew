@@ -171,14 +171,15 @@ const Login = () => {
                 {isLoading ? 'Logging in...' : 'Login'}
               </button>
               
-              {/* Only show registration link for doctor and patient */}
-              {userType !== 'admin' && (
+              {/* Only show registration link for patients, not for doctors or admins */}
+              {userType === 'patient' && (
                 <div className="text-center mt-4">
                   Don't have an account? <a href="/register" className="text-blue-500 hover:text-blue-700">Register here</a>
                 </div>
               )}
               
-              {error && <p className="text-red-500 mt-4">{error}</p>}
+              {/* Show error message only once, removing the duplicate */}
+              {/* {error && <p className="text-red-500 mt-4">{error}</p>} */}
             </form>
           </div>
         )}

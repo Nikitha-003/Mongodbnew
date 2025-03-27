@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import config from '../config/config';
 
 const PatientDetails = ({ fetchPatients }) => {
   const { id } = useParams();
@@ -60,7 +61,11 @@ const PatientDetails = ({ fetchPatients }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:3001/patients/${id}`, formData);
+      await axios.put(`${config.API_URL}/patients/${id}`, formData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       setPatient(formData);
       setIsEditing(false);
       if (fetchPatients) fetchPatients();
@@ -73,7 +78,11 @@ const PatientDetails = ({ fetchPatients }) => {
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this patient?')) {
       try {
-        await axios.delete(`http://localhost:3001/patients/${id}`);
+        await axios.delete(`${config.API_URL}/patients/${id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
         if (fetchPatients) fetchPatients();
         navigate('/patients');
       } catch (error) {
@@ -125,13 +134,48 @@ const PatientDetails = ({ fetchPatients }) => {
 
   const generatePrescription = async () => {
     try {
-      await axios.post(`http://localhost:3001/patients/${id}/prescription`, prescriptionData);
+      await axios.post(`${config.API_URL}/patients/${id}/prescription`, prescriptionData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       alert('Prescription generated successfully!');
       navigate(`/patients/${id}/prescription`);
     } catch (error) {
       console.error('Error generating prescription:', error);
       setError('Failed to generate prescription. Please try again.');
     }
+  };
+
+  // Add the renderPrescriptions function inside the component
+  const renderPrescriptions = () => {
+    if (!patient.prescriptions || patient.prescriptions.length === 0) {
+      return (
+        <div className="text-gray-500 italic">
+          No prescriptions available
+        </div>
+      );
+    }
+
+    return patient.prescriptions.map((prescription, index) => (
+      <div key={index} className="mb-4 border-b pb-2">
+        <div className="font-medium">{prescription.medicine || '-'}</div>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="font-semibold">Dosage:</span> {prescription.dosage || 'Not specified'}
+          </div>
+          <div>
+            <span className="font-semibold">Frequency:</span> {prescription.frequency || 'Not specified'}
+          </div>
+          <div>
+            <span className="font-semibold">Duration:</span> {prescription.duration || 'Not specified'}
+          </div>
+          <div>
+            <span className="font-semibold">Instructions:</span> {prescription.instructions || 'Not specified'}
+          </div>
+        </div>
+      </div>
+    ));
   };
 
   if (loading) {

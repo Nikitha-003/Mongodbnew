@@ -32,27 +32,17 @@ const medicationSchema = new mongoose.Schema({
 }, { _id: false });
 
 // Define the full prescription schema
+// Make sure the prescription schema includes all fields
 const prescriptionSchema = new mongoose.Schema({
-  date: {
-    type: Date,
-    default: Date.now
-  },
-  diagnosis: String,
-  medications: [{
-    name: String,
-    dosage: String,
-    frequency: String,
-    duration: String
-  }],
-  instructions: String,
-  doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor'
-  },
-  doctorName: String
+  medicine: { type: String, required: false },
+  dosage: { type: String, required: false },
+  frequency: { type: String, required: false },
+  duration: { type: String, required: false },
+  instructions: { type: String, required: false },
+  // Add any other fields you need
 });
 
-// Update your patient schema
+// Make sure prescriptions are included in the patient schema
 const patientSchema = new mongoose.Schema({
   patient_id: {
     type: String,

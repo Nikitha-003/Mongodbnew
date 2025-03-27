@@ -92,11 +92,22 @@ exports.createPatient = async (req, res) => {
 };
 
 // Update a patient
+// In the updatePatient function
 exports.updatePatient = async (req, res) => {
   try {
+    const { id } = req.params;
+    
+    // Log the incoming data to debug
+    console.log('Updating patient with data:', req.body);
+    
+    // Make sure prescriptions are included in the update
     const updatedPatient = await Patient.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+      id,
+      {
+        ...req.body,
+        // Ensure prescriptions are explicitly included
+        prescriptions: req.body.prescriptions || []
+      },
       { new: true, runValidators: true }
     );
     
@@ -104,9 +115,10 @@ exports.updatePatient = async (req, res) => {
       return res.status(404).json({ message: 'Patient not found' });
     }
     
-    res.json(updatedPatient);
+    res.status(200).json(updatedPatient);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error updating patient:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
