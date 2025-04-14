@@ -53,8 +53,9 @@ router.get('/patients', authenticateToken, async (req, res) => {
     const Patient = require('../models/Patient');
     
     // Get all patients with necessary fields for the dashboard
-    // Update the fields selection to include age
-    const patients = await Patient.find({}, 'patient_id name dob age gender email phone');
+    // Update the fields selection to include address and blood_group
+    // Update the fields selection to include appointments
+    const patients = await Patient.find({}, 'patient_id name dob age gender email phone address blood_group appointments');
     
     // Format the response to ensure dates are properly formatted and ages are calculated
     const formattedPatients = patients.map(patient => {

@@ -376,49 +376,20 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Update a patient
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    console.log(`Updating patient with ID: ${req.params.id}`);
-    console.log('Update data:', JSON.stringify(req.body, null, 2));
+    const updatedData = {
+      ...req.body,
+      address: req.body.address,
+      blood_group: req.body.blood_group
+    };
     
-    // Find the patient first to check if it exists
-    const patient = await Patient.findById(req.params.id);
-    if (!patient) {
-      console.log(`Patient with ID ${req.params.id} not found`);
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-    
-    // Update the patient
     const updatedPatient = await Patient.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).select('-password');
-    
-    console.log(`Patient updated successfully: ${updatedPatient.name}`);
+      updatedData,
+      { new: true }
+    );
     res.json(updatedPatient);
   } catch (error) {
-    console.error(`Error updating patient ${req.params.id}:`, error);
-    
-    // Check for validation errors
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: 'Validation error', 
-        errors: error.errors 
-      });
-    }
-    
-    // Check for duplicate key error
-    if (error.code === 11000) {
-      return res.status(400).json({
-        message: 'Duplicate field error',
-        errors: {
-          [Object.keys(error.keyPattern)[0]]: {
-            message: `This ${Object.keys(error.keyPattern)[0]} is already in use`
-          }
-        }
-      });
-    }
-    
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
