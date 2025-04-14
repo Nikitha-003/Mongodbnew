@@ -117,17 +117,87 @@ router.get('/my-appointments', authenticateToken, async (req, res) => {
   }
 });
 
-// Get patient prescriptions
-router.get('/prescriptions', authenticateToken, async (req, res) => {
+// Get patient medical history
+router.get('/medical-history', authenticateToken, async (req, res) => {
   try {
+    console.log('Fetching medical history for patient ID:', req.user.id);
+    
+    // Find the patient by ID
     const patient = await Patient.findById(req.user.id);
+    
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found' });
     }
-    res.json(patient.prescriptions);
+    
+    // Return the medical history array from the patient document
+    // If it doesn't exist or is empty, return an empty array
+    const medicalHistory = patient.medical_history || [];
+    
+    // Format the data to match the frontend expectations
+    const formattedHistory = medicalHistory.map(item => ({
+      id: item._id,
+      condition: item.condition,
+      diagnosedOn: item.diagnosed_on,
+      notes: item.notes || ''
+    }));
+    
+    console.log(`Found ${formattedHistory.length} medical conditions`);
+    res.json(formattedHistory);
+  } catch (error) {
+    console.error('Error fetching medical history:', error);
+    res.status(500).json({ message: 'Error fetching medical history' });
+  }
+});
+
+// Get patient prescriptions
+router.get('/prescriptions', authenticateToken, async (req, res) => {
+  try {
+    console.log('Fetching prescriptions for patient ID:', req.user.id);
+    
+    // Find the patient by ID
+    const patient = await Patient.findById(req.user.id);
+    
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+    
+    // Return the prescriptions array from the patient document
+    // If it doesn't exist or is empty, return an empty array
+    const prescriptions = patient.prescriptions || [];
+    
+    // Format the data to match the frontend expectations
+    const formattedPrescriptions = prescriptions.map(prescription => {
+      // Find the doctor who prescribed it
+      const doctorName = prescription.doctorName || 'Unknown Doctor';
+      
+      return {
+        id: prescription._id,
+        date: prescription.date,
+        doctor: doctorName,
+        diagnosis: prescription.diagnosis || 'General Consultation',
+        medications: Array.isArray(prescription.medications) 
+          ? prescription.medications.map(med => ({
+              name: med.medicine || med.name,
+              dosage: med.dosage,
+              frequency: med.frequency,
+              duration: med.duration
+            }))
+          : [{
+              name: prescription.medicine,
+              dosage: prescription.dosage,
+              frequency: prescription.frequency,
+              duration: prescription.duration
+            }],
+        instructions: prescription.instructions || '',
+        followUpDate: prescription.followUpDate
+      };
+    });
+    
+    console.log(`Found ${formattedPrescriptions.length} prescriptions`);
+    res.json(formattedPrescriptions);
   } catch (error) {
     console.error('Error fetching prescriptions:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error fetching prescriptions' });
   }
 });
 
@@ -410,6 +480,47 @@ router.get('/:id/prescription', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error(`Error fetching prescriptions for patient ${req.params.id}:`, error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// 2. Create a Route to Add Prescriptions with Condition References
+
+// Add a route to create a prescription linked to a medical condition
+router.post('/patients/:patientId/prescriptions', authenticateToken, async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { medications, instructions, conditionId, doctorId } = req.body;
+    
+    // Find the patient
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+    
+    // Find the condition to get its date
+    const condition = patient.medical_history.id(conditionId);
+    if (!condition) {
+      return res.status(404).json({ message: 'Medical condition not found' });
+    }
+    
+    // Create the prescription with the condition reference
+    const prescription = {
+      medications,
+      instructions,
+      conditionId,
+      relatedCondition: condition.condition,
+      date: condition.diagnosedOn,
+      doctor: doctorId
+    };
+    
+    // Add the prescription to the patient
+    patient.prescriptions.push(prescription);
+    await patient.save();
+    
+    res.status(201).json(prescription);
+  } catch (error) {
+    console.error('Error creating prescription:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

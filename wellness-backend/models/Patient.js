@@ -33,13 +33,24 @@ const medicationSchema = new mongoose.Schema({
 
 // Define the full prescription schema
 // Make sure the prescription schema includes all fields
+// Update the prescription schema to include a reference to medical conditions
 const prescriptionSchema = new mongoose.Schema({
   medicine: { type: String, required: false },
   dosage: { type: String, required: false },
   frequency: { type: String, required: false },
   duration: { type: String, required: false },
   instructions: { type: String, required: false },
-  // Add any other fields you need
+  // Add these fields to link prescriptions to conditions
+  conditionId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MedicalCondition' 
+  },
+  relatedCondition: { type: String },
+  date: { type: Date, default: Date.now },
+  doctor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Doctor'
+  }
 });
 
 // Make sure prescriptions are included in the patient schema
