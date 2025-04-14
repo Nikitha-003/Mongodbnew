@@ -302,14 +302,14 @@ const PatientList = ({ patients, setPatients }) => {
             <tbody className="divide-y divide-gray-200">
               {filteredPatients.map((patient) => (
                 <tr key={patient._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-blue-600">
                     {patient.patient_id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {patient.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {patient.age}
+                    {patient.age }
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {patient.gender}

@@ -1,10 +1,21 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import config from '../config/config'; // Add this import
 
-const Register = () => {
-  const [userType, setUserType] = useState('');
+const Register = ({ initialUserType }) => {
+  const [userType, setUserType] = useState(initialUserType || '');
+  const params = useParams();
+  
+  // Use effect to set user type from URL parameter if available
+  useEffect(() => {
+    if (params.userType) {
+      setUserType(params.userType);
+    } else if (initialUserType) {
+      setUserType(initialUserType);
+    }
+  }, [params.userType, initialUserType]);
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -117,16 +128,11 @@ const Register = () => {
           </div>
         ) : (
           <div>
-            <div className="flex justify-between items-center mb-6">
+            <div className="mb-6">
               <h2 className="text-xl font-semibold">
                 {userType === 'doctor' ? 'Doctor Registration' : 'Patient Registration'}
               </h2>
-              <button 
-                onClick={() => setUserType('')}
-                className="text-sm text-blue-500 hover:text-blue-700"
-              >
-                Change User Type
-              </button>
+              {/* Removed the "Change User Type" button */}
             </div>
             
             {success && (

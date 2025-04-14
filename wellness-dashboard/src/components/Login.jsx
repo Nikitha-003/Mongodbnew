@@ -6,10 +6,10 @@ import config from '../config/config'; // Add this import
 
 const Login = () => {
   const [userType, setUserType] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(''); // Initialize as empty string
+  const [password, setPassword] = useState(''); // Initialize as empty string
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); 
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -188,9 +188,10 @@ const Login = () => {
           
           {userType === 'patient' && (
             <div className="mt-6 text-center">
+              {/* // In your Login component */}
               <p className="text-sm text-gray-600">
                 Don't have an account?{' '}
-                <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                <a href="/register/patient" className="font-medium text-blue-600 hover:text-blue-500">
                   Register here
                 </a>
               </p>

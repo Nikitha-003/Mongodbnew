@@ -114,7 +114,8 @@ function AppContent() {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
-          <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/register/:userType" element={<Register />} />
           
           {/* Protected routes */}
           <Route path="/" element={

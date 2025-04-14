@@ -69,7 +69,7 @@ const Appointments = ({ appointments }) => {
               {sortedAppointments.map((appointment, index) => (
                 <tr key={appointment.id || index} className="hover:bg-gray-600">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {appointment.patientId}
+                    {appointment.patient_id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {appointment.patientName}
