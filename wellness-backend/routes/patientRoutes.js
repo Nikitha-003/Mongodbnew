@@ -5,6 +5,8 @@ const Patient = require('../models/Patient');
 const Doctor = require('../models/Doctor');
 const patientController = require('../controllers/patientController');
 
+
+
 // Get all patients
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -374,22 +376,41 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Update a patient
+// Update a patient
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const updatedData = {
-      ...req.body,
-      address: req.body.address,
-      blood_group: req.body.blood_group
-    };
+    console.log('Updating patient with data:', JSON.stringify(req.body, null, 2));
     
+    // Make sure we're updating with all fields, including prescriptions
     const updatedPatient = await Patient.findByIdAndUpdate(
       req.params.id,
-      updatedData,
+      {
+        $set: {
+          name: req.body.name,
+          email: req.body.email,
+          age: req.body.age,
+          gender: req.body.gender,
+          phone: req.body.phone,
+          address: req.body.address,
+          blood_group: req.body.blood_group,
+          patient_id: req.body.patient_id,
+          medical_history: req.body.medical_history,
+          appointments: req.body.appointments,
+          prescriptions: req.body.prescriptions // Ensure prescriptions are included
+        }
+      },
       { new: true }
     );
+
+    if (!updatedPatient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    console.log('Patient updated successfully:', updatedPatient._id);
     res.json(updatedPatient);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error updating patient:', error);
+    res.status(500).json({ message: 'Error updating patient', error: error.message });
   }
 });
 

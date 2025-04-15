@@ -100,61 +100,86 @@ const CreatePrescription = () => {
     }));
   };
 
+  // Update the handleSubmit function to ensure proper prescription format
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    // Validate form
-    if (prescriptionData.medications.length === 0) {
-      setNotification({
-        show: true,
-        message: 'Please add at least one medication',
-        type: 'error'
-      });
-      return;
-    }
-
-    if (!selectedConditionId) {
-      setNotification({
-        show: true,
-        message: 'Please select a related medical condition',
-        type: 'error'
-      });
-      return;
-    }
-
     try {
-      setIsSubmitting(true);
+      // Validate form
+      if (prescriptionData.medications.length === 0) {
+        setNotification({
+          show: true,
+          message: 'Please add at least one medication',
+          type: 'error'
+        });
+        setIsSubmitting(false);
+        return;
+      }
       
-      // Create prescription with link to medical condition
-      const response = await axios.post(
-        `${config.API_URL}/patients/${patientId}/prescriptions`, 
+      // Format the prescription data
+      const newPrescription = {
+        date: new Date().toISOString(),
+        doctorId: user.id,
+        doctorName: user.name,
+        medications: prescriptionData.medications,
+        instructions: prescriptionData.instructions,
+        followUpDate: prescriptionData.followUpDate,
+        // Include the selected condition if any
+        diagnosis: selectedConditionId ? 
+          patient.medical_history.find(c => c._id === selectedConditionId)?.condition : 
+          'General Consultation'
+      };
+      
+      console.log('Submitting prescription:', newPrescription);
+      
+      // Get the current patient data first
+      const patientResponse = await axios.get(`${config.API_URL}/patients/${patientId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const currentPatient = patientResponse.data;
+      
+      // Add the new prescription to the patient's prescriptions array
+      const updatedPrescriptions = [...(currentPatient.prescriptions || []), newPrescription];
+      
+      // Update the patient with the new prescription
+      await axios.put(
+        `${config.API_URL}/patients/${patientId}`,
         {
-          ...prescriptionData,
-          conditionId: selectedConditionId,
-          doctorId: user.id
+          ...currentPatient,
+          prescriptions: updatedPrescriptions
         },
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-
+      
       setNotification({
         show: true,
         message: 'Prescription created successfully',
         type: 'success'
       });
-
-      // Redirect after a short delay
+      
+      // Reset form
+      setPrescriptionData({
+        medications: [],
+        instructions: '',
+        followUpDate: ''
+      });
+      
+      // Navigate back to patient details
       setTimeout(() => {
         navigate(`/patients/${patientId}`);
       }, 2000);
-    } catch (err) {
-      console.error('Error creating prescription:', err);
+    } catch (error) {
+      console.error('Error creating prescription:', error);
       setNotification({
         show: true,
-        message: 'Failed to create prescription. Please try again.',
+        message: 'Failed to create prescription',
         type: 'error'
       });
+    } finally {
       setIsSubmitting(false);
     }
   };

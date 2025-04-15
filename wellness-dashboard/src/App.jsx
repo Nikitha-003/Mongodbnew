@@ -48,16 +48,18 @@ function AppContent() {
 
   const fetchPatients = async () => {
     try {
-      // Use different endpoints based on user type
+      // Declare endpoint first
       const endpoint = userType === 'doctor' 
         ? `${config.API_URL}/doctors/my-patients` 
         : `${config.API_URL}/patients`;
-      
+
+      // Then use it in the request
       const response = await axios.get(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
+      
       setPatients(response.data);
       
       // Extract appointments from all patients

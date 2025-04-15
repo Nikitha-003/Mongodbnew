@@ -52,18 +52,21 @@ const AddPatientForm = ({ onPatientAdded }) => {
         }
       });
 
+      // In the searchPatient function where you setPatientData
       if (response.data) {
-        // Auto-fill the form with patient details
-        setPatientData({
-          ...response.data,
-          medical_history: response.data.medical_history && response.data.medical_history.length > 0 
-            ? response.data.medical_history 
-            : [{ condition: "", diagnosed_on: "" }],
-          appointments: response.data.appointments && response.data.appointments.length > 0
-            ? response.data.appointments
-            : [{ date: "", time: "10:00", doctor: "", department: "", status: "Pending" }]
-        });
-
+      // Get appointment reason from the first appointment
+      const appointmentReason = response.data.appointments?.[0]?.reason || "General Consultation";
+      
+      // Auto-fill the medical history with appointment reason
+      setPatientData({
+        ...response.data,
+        medical_history: [{
+          condition: appointmentReason,
+          diagnosed_on: new Date().toISOString().split('T')[0] // Current date
+        }],
+        appointments: response.data.appointments || []
+      });
+      
         // Set prescriptions if they exist
         if (response.data.prescriptions && response.data.prescriptions.length > 0) {
           setPrescriptions(response.data.prescriptions);
@@ -282,7 +285,6 @@ const AddPatientForm = ({ onPatientAdded }) => {
             </button>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Enter an existing patient ID to auto-fill the form, or leave blank to create a new patient.
           </p>
         </div>
         

@@ -58,9 +58,21 @@ const PatientList = ({ patients, setPatients }) => {
   
   // Optimized edit handler with useCallback
   const handleEdit = useCallback((patient) => {
-    setSelectedPatient({...patient});
-    setIsModalOpen(true);
-  }, []);
+    // Make a fresh API call to get the latest patient data
+    axios.get(`${config.API_URL}/patients/${patient._id}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    .then(response => {
+      setSelectedPatient(response.data);
+      setIsModalOpen(true);
+    })
+    .catch(error => {
+      console.error("Error fetching patient details for edit:", error);
+      showNotification("Failed to load patient details for editing", "error");
+    });
+  }, [showNotification]);
   
   // Add the missing handleCloseModal function
   const handleCloseModal = useCallback(() => {
@@ -69,13 +81,29 @@ const PatientList = ({ patients, setPatients }) => {
   }, []);
   
   // Add handleUpdate function for the edit modal
+  // In the handleUpdate function, make sure prescriptions are included
   const handleUpdate = useCallback(async () => {
     try {
       if (!selectedPatient) return;
       
+      // Make sure all fields are included in the update
+      const patientToUpdate = {
+        name: selectedPatient.name,
+        email: selectedPatient.email,
+        age: selectedPatient.age,
+        gender: selectedPatient.gender,
+        phone: selectedPatient.phone,
+        address: selectedPatient.address,
+        blood_group: selectedPatient.blood_group,
+        patient_id: selectedPatient.patient_id,
+        medical_history: selectedPatient.medical_history || [],
+        appointments: selectedPatient.appointments || [],
+        prescriptions: selectedPatient.prescriptions || [] // Ensure prescriptions are included
+      };
+      
       const response = await axios.put(
         `${config.API_URL}/patients/${selectedPatient._id}`, 
-        selectedPatient,
+        patientToUpdate,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -101,17 +129,7 @@ const PatientList = ({ patients, setPatients }) => {
     }
   }, [selectedPatient, setPatients, showNotification, handleCloseModal]);
   
-  // Handle input changes in the edit modal
-  const handleInputChange = useCallback((e, field) => {
-    if (!selectedPatient) return;
-    
-    setSelectedPatient({
-      ...selectedPatient,
-      [field]: e.target.value
-    });
-  }, [selectedPatient]);
-  
-  // Optimized generatePrescription function
+  // Also, let's add a function to generate a prescription
   const generatePrescription = useCallback(async (patient) => {
     try {
       setIsGenerating(true);
@@ -125,8 +143,8 @@ const PatientList = ({ patients, setPatients }) => {
             <div>
               <p><strong>Patient ID:</strong> ${patient.patient_id}</p>
               <p><strong>Name:</strong> ${patient.name}</p>
-              <p><strong>Age:</strong> ${patient.age}</p>
-              <p><strong>Gender:</strong> ${patient.gender}</p>
+              <p><strong>Age:</strong> ${patient.age || 'N/A'}</p>
+              <p><strong>Gender:</strong> ${patient.gender || 'N/A'}</p>
             </div>
             <div>
               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
@@ -137,103 +155,103 @@ const PatientList = ({ patients, setPatients }) => {
             <h3 style="border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 15px;">Medications</h3>
             <ul style="list-style-type: none; padding-left: 0;">
               ${patient.prescriptions && patient.prescriptions.length > 0 
-                ? patient.prescriptions.map(p => 
-                  `<li style="margin-bottom: 10px; padding: 10px; border-left: 3px solid #2563eb;">
-                    <p><strong>${p.medicine || p.medication}</strong> - ${p.dosage}</p>
-                    <p>Frequency: ${p.frequency}</p>
-                    <p>Instructions: ${p.instructions}</p>
-                    <p>Duration: ${p.duration}</p>
-                  </li>`
-                ).join('') 
+                ? patient.prescriptions.map(p => {
+                    // Check if medications array exists and has items
+                    if (p.medications && p.medications.length > 0) {
+                      return p.medications.map(med => 
+                        `<li style="margin-bottom: 10px; padding: 10px; border-left: 3px solid #2563eb;">
+                          <p><strong>${med.name || med.medicine}</strong> - ${med.dosage}</p>
+                          <p>Frequency: ${med.frequency}</p>
+                          <p>Instructions: ${p.instructions || 'As directed'}</p>
+                          <p>Duration: ${med.duration}</p>
+                        </li>`
+                      ).join('')
+                    } else {
+                      // Handle single medication format
+                      return `<li style="margin-bottom: 10px; padding: 10px; border-left: 3px solid #2563eb;">
+                        <p><strong>${p.medicine || p.medication}</strong> - ${p.dosage}</p>
+                        <p>Frequency: ${p.frequency}</p>
+                        <p>Instructions: ${p.instructions || 'As directed'}</p>
+                        <p>Duration: ${p.duration}</p>
+                      </li>`
+                    }
+                  }).join('') 
                 : '<li>No medications prescribed</li>'
               }
             </ul>
           </div>
-          
-          <div style="margin-top: 50px; display: flex; justify-content: flex-end;">
-            <div>
-              <p>Dr. ${localStorage.getItem('userName') || 'Wellness Doctor'}</p>
-            </div>
-          </div>
         </div>
       `;
       
-      // Create a temporary div with optimized rendering
+      // Create a temporary div to hold the prescription content
       const tempDiv = document.createElement('div');
-      tempDiv.style.width = '800px';
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.backgroundColor = '#ffffff';
       tempDiv.innerHTML = prescriptionContent;
       document.body.appendChild(tempDiv);
       
-      // Optimize html2canvas settings
+      // Use html2canvas to capture the prescription as an image
       const canvas = await html2canvas(tempDiv, {
-        scale: 1.5, // Reduced from 2 for better performance
-        useCORS: true,
-        logging: false, // Disable logging for better performance
-        allowTaint: true,
+        scale: 2,
         backgroundColor: '#ffffff',
-        imageTimeout: 0, // No timeout
-        onclone: (document) => {
-          // Any additional optimizations can be done here
-        }
       });
       
-      // Create PDF with optimized settings
-      const imgData = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG with 80% quality for better performance
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210; // A4 width in mm
-      const imgHeight = canvas.height * imgWidth / canvas.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-      
-      // Save the PDF locally
-      pdf.save(`prescription_${patient.patient_id}.pdf`);
-      
-      // Clean up
+      // Remove the temporary div
       document.body.removeChild(tempDiv);
       
-      // Update patient with minimal data
-      const updatedPatient = {
-        ...patient,
-        has_prescription: true, // Just store a flag instead of the full PDF data
-        prescription_date: new Date().toISOString()
-      };
+      // Create a PDF from the canvas
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
       
-      // Save the updated patient to the database
-      await axios.put(
-        `${config.API_URL}/patients/${patient._id}`, 
-        updatedPatient,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
+      // Add the image to the PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      // Update the patients list with minimal re-rendering
-      setPatients(prevPatients => 
-        prevPatients.map(p => p._id === patient._id ? updatedPatient : p)
-      );
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      
+      // Save the PDF
+      pdf.save(`prescription_${patient.patient_id}_${new Date().toISOString().split('T')[0]}.pdf`);
       
       setIsGenerating(false);
-      showNotification("Prescription generated successfully!");
     } catch (error) {
-      console.error("Error generating prescription:", error);
-      showNotification("Failed to generate prescription. Please try again.", "error");
+      console.error('Error generating prescription:', error);
       setIsGenerating(false);
+      showNotification('Failed to generate prescription', 'error');
     }
-  }, [setPatients, showNotification]);
-
+  }, [showNotification]);
+  
+  // Handle input changes in the edit modal
+  const handleInputChange = useCallback((e, field) => {
+    if (!selectedPatient) return;
+    
+    setSelectedPatient({
+      ...selectedPatient,
+      [field]: e.target.value
+    });
+  }, [selectedPatient]);
+  
   const editPatient = (patientId) => {
     navigate(`/edit-patient/${patientId}`);
   };
 
   // Function to view patient details
   const viewPatientDetails = (patient) => {
-    setPatientDetails(patient);
-    setIsDetailsModalOpen(true);
+    // Make a fresh API call to get the latest patient data
+    axios.get(`${config.API_URL}/patients/${patient._id}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    .then(response => {
+      setPatientDetails(response.data);
+      setIsDetailsModalOpen(true);
+    })
+    .catch(error => {
+      console.error("Error fetching patient details:", error);
+      showNotification("Failed to load patient details", "error");
+    });
   };
 
   // Close the details modal
@@ -286,12 +304,6 @@ const PatientList = ({ patients, setPatients }) => {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Age
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Gender
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Next Appointment
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -307,12 +319,6 @@ const PatientList = ({ patients, setPatients }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {patient.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {patient.age }
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {patient.gender}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {patient.appointments && patient.appointments.length > 0 
@@ -373,6 +379,7 @@ const PatientList = ({ patients, setPatients }) => {
               {/* Basic Information */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="text-lg font-medium mb-3 border-b pb-2">Basic Information</h3>
+                {/* // In the details modal rendering section */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-sm text-gray-500">Patient ID</p>
@@ -384,11 +391,11 @@ const PatientList = ({ patients, setPatients }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Age</p>
-                    <p className="font-medium">{patientDetails.age}</p>
+                    <p className="font-medium">{patientDetails.age || "Not provided"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Gender</p>
-                    <p className="font-medium">{patientDetails.gender}</p>
+                    <p className="font-medium">{patientDetails.gender || "Not provided"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Phone</p>
@@ -501,7 +508,7 @@ const PatientList = ({ patients, setPatients }) => {
         </div>
       )}
 
-      {/* Edit Patient Modal - Keep existing edit modal code */}
+      {/* Edit Patient Modal */}
       {isModalOpen && selectedPatient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto text-gray-800">
@@ -598,177 +605,6 @@ const PatientList = ({ patients, setPatients }) => {
                   </select>
                 </div>
               </div>
-            </div>
-            
-            {/* Medical History */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Medical History</h3>
-              {selectedPatient.medical_history && selectedPatient.medical_history.map((history, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2 p-2 border rounded">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-                    <input
-                      type="text"
-                      value={history.condition || ""}
-                      onChange={(e) => {
-                        const updatedHistory = [...selectedPatient.medical_history];
-                        updatedHistory[index].condition = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          medical_history: updatedHistory
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis Date</label>
-                    <input
-                      type="date"
-                      value={history.diagnosis_date || ""}
-                      onChange={(e) => {
-                        const updatedHistory = [...selectedPatient.medical_history];
-                        updatedHistory[index].diagnosis_date = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          medical_history: updatedHistory
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Appointments */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Appointments</h3>
-              {selectedPatient.appointments && selectedPatient.appointments.map((appointment, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2 p-2 border rounded">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={appointment.date || ""}
-                      onChange={(e) => {
-                        const updatedAppointments = [...selectedPatient.appointments];
-                        updatedAppointments[index].date = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          appointments: updatedAppointments
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                    <input
-                      type="time"
-                      value={appointment.time || ""}
-                      onChange={(e) => {
-                        const updatedAppointments = [...selectedPatient.appointments];
-                        updatedAppointments[index].time = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          appointments: updatedAppointments
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
-                    <input
-                      type="text"
-                      value={appointment.doctor || ""}
-                      onChange={(e) => {
-                        const updatedAppointments = [...selectedPatient.appointments];
-                        updatedAppointments[index].doctor = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          appointments: updatedAppointments
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Prescriptions */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Prescriptions</h3>
-              {selectedPatient.prescriptions && selectedPatient.prescriptions.map((prescription, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2 p-2 border rounded">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Medication</label>
-                    <input
-                      type="text"
-                      value={prescription.medicine || prescription.medication || ""}
-                      onChange={(e) => {
-                        const updatedPrescriptions = [...selectedPatient.prescriptions];
-                        updatedPrescriptions[index].medicine = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          prescriptions: updatedPrescriptions
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dosage</label>
-                    <input
-                      type="text"
-                      value={prescription.dosage || ""}
-                      onChange={(e) => {
-                        const updatedPrescriptions = [...selectedPatient.prescriptions];
-                        updatedPrescriptions[index].dosage = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          prescriptions: updatedPrescriptions
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
-                    <input
-                      type="text"
-                      value={prescription.frequency || ""}
-                      onChange={(e) => {
-                        const updatedPrescriptions = [...selectedPatient.prescriptions];
-                        updatedPrescriptions[index].frequency = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          prescriptions: updatedPrescriptions
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-                    <input
-                      type="text"
-                      value={prescription.duration || ""}
-                      onChange={(e) => {
-                        const updatedPrescriptions = [...selectedPatient.prescriptions];
-                        updatedPrescriptions[index].duration = e.target.value;
-                        setSelectedPatient({
-                          ...selectedPatient,
-                          prescriptions: updatedPrescriptions
-                        });
-                      }}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                </div>
-              ))}
             </div>
             
             <div className="flex justify-end space-x-2">
